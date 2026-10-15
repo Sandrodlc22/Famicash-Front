@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from './api';
 import MarcoCelular from './components/MarcoCelular';
 import VistaLogin from './components/VistaLogin';
+import VistaRegistro from './components/VistaRegistro';
 import VistaIngresoMonto from './components/VistaIngresoMonto';
 import VistaResumen from './components/VistaResumen';
 import VistaPerfil from './components/VistaPerfil';
@@ -11,7 +12,7 @@ import './App.css';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // Vistas: 'login' | 'expense' | 'summary' | 'profile' | 'accounts'
+  // Vistas: 'login' | 'register' | 'expense' | 'summary' | 'profile' | 'accounts'
   const [currentView, setCurrentView] = useState('login');
   const [usuario, setUsuario] = useState(null);
   const [cuentas, setCuentas] = useState([]);
@@ -59,6 +60,15 @@ export default function App() {
     await loadAppData();
   };
 
+  // Manejo de Registro de Nuevo Usuario
+  const handleRegister = async (userData) => {
+    const res = await api.register(userData);
+    setUsuario(res.usuario);
+    setIsAuthenticated(true);
+    setCurrentView('expense');
+    await loadAppData();
+  };
+
   // Manejo de Registro de Movimiento
   const handleSaveMovimiento = async (movimientoData) => {
     await api.createMovimiento(movimientoData);
@@ -85,7 +95,15 @@ export default function App() {
       <div className="mobile-app-root">
         {/* Renderizado condicional de vistas */}
         {currentView === 'login' ? (
-          <VistaLogin onLoginSuccess={handleLogin} />
+          <VistaLogin
+            onLoginSuccess={handleLogin}
+            onGoToRegister={() => setCurrentView('register')}
+          />
+        ) : currentView === 'register' ? (
+          <VistaRegistro
+            onRegisterSuccess={handleRegister}
+            onGoToLogin={() => setCurrentView('login')}
+          />
         ) : (
           <div className="authenticated-layout">
             <div className="app-main-content">

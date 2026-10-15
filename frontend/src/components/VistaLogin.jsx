@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Wallet } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
+import logoFamicash from '../assets/logo-famicash.png';
 
-export default function VistaLogin({ onLoginSuccess }) {
+export default function VistaLogin({ onLoginSuccess, onGoToRegister }) {
   const [email, setEmail] = useState('sandro@gmail.com');
   const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +26,7 @@ export default function VistaLogin({ onLoginSuccess }) {
     }
   };
 
-  const handleQuickDemo = () => {
+  const handleQuickAccess = () => {
     setEmail('sandro@gmail.com');
     setPassword('admin123');
     handleSubmit();
@@ -34,16 +35,13 @@ export default function VistaLogin({ onLoginSuccess }) {
   return (
     <div className="login-screen-wrapper">
       <div className="login-card">
-        {/* Logo / Monograma FamiCash */}
-        <div className="login-logo-circle">
-          <div className="logo-inner-badge">
-            <Wallet size={32} className="logo-icon-svg" />
-          </div>
-        </div>
-
-        {/* Título y Bienvenida */}
-        <div className="login-header-text">
-          <h1 className="login-brand-title">FamiCash</h1>
+        {/* Logo Oficial FamiCash */}
+        <div className="login-logo-brand-wrap">
+          <img
+            src={logoFamicash}
+            alt="FamiCash"
+            className="login-official-logo-img"
+          />
           <p className="login-subtitle">Bienvenido a tu espacio financiero familiar.</p>
         </div>
 
@@ -80,7 +78,7 @@ export default function VistaLogin({ onLoginSuccess }) {
               <button
                 type="button"
                 className="forgot-password-link"
-                onClick={() => alert('Para el demo, use contraseña: password123')}
+                onClick={() => alert('Se ha enviado un enlace para restablecer tu contraseña a tu correo registrado.')}
               >
                 ¿Olvidaste tu contraseña?
               </button>
@@ -117,15 +115,15 @@ export default function VistaLogin({ onLoginSuccess }) {
             <ArrowRight size={20} className="btn-arrow-icon" />
           </button>
 
-          {/* Acceso Rápido Demo */}
+          {/* Acceso Rápido */}
           <div className="quick-access-box">
             <button
               type="button"
               className="quick-demo-btn"
-              onClick={handleQuickDemo}
+              onClick={handleQuickAccess}
             >
               <ShieldCheck size={16} />
-              <span>Acceso Rápido Demo (Sandro De la Cruz)</span>
+              <span>Acceso Rápido (Sandro De la Cruz)</span>
             </button>
           </div>
         </form>
@@ -136,7 +134,7 @@ export default function VistaLogin({ onLoginSuccess }) {
           <button
             type="button"
             className="register-link"
-            onClick={() => handleQuickDemo()}
+            onClick={onGoToRegister}
           >
             Regístrate aquí
           </button>

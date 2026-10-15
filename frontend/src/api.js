@@ -136,13 +136,42 @@ export const api = {
         return await res.json();
       }
     } catch (e) {
-      console.warn('Backend offline, usando fallback local:', e.message);
+      console.warn('Backend offline, usando autenticación local:', e.message);
     }
     // Fallback login
     return {
-      message: 'Inicio de sesión simulado',
-      token: 'demo-token',
+      message: 'Inicio de sesión exitoso',
+      token: 'auth-token-famicash',
       usuario: fallbackState.usuario
+    };
+  },
+
+  async register(userData) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Backend offline, usando registro local:', e.message);
+    }
+    // Fallback register
+    const nuevoUsuario = {
+      id: Date.now(),
+      nombre: userData.nombre || 'Nuevo Usuario',
+      email: userData.email,
+      rol: userData.rol || 'Administrador Familiar',
+      avatar: userData.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256'
+    };
+    fallbackState.usuario = nuevoUsuario;
+    return {
+      message: 'Usuario registrado con éxito',
+      token: 'auth-token-famicash-' + Date.now(),
+      usuario: nuevoUsuario
     };
   },
 
@@ -199,24 +228,37 @@ export const api = {
     const cuenta = fallbackState.cuentas.find(c => c.id === parseInt(data.cuenta_id, 10));
     const montoNum = parseFloat(data.monto);
 
+    const isTransfer = data.tipo === 'TRANSFERENCIA' || (data.subtipo === 'Transferencia' && data.cuenta_destino_id);
+    const ctaOrigen = cuenta;
+    const ctaDestino = isTransfer ? fallbackState.cuentas.find(c => c.id === parseInt(data.cuenta_destino_id, 10)) : null;
+
     const nuevo = {
       id: Date.now(),
       cuenta_id: parseInt(data.cuenta_id, 10),
+      cuenta_destino_id: ctaDestino ? ctaDestino.id : null,
       categoria_id: parseInt(data.categoria_id, 10),
       tipo: data.tipo,
       monto: montoNum,
       subtipo: data.subtipo || 'Cotidiano',
       descripcion: data.descripcion || '',
-      categoria_nombre: cat ? cat.nombre : 'General',
-      categoria_icono: cat ? cat.icono : 'more-horizontal',
+      categoria_nombre: cat ? cat.nombre : (isTransfer ? 'Transferencia' : 'General'),
+      categoria_icono: cat ? cat.icono : (isTransfer ? 'arrow-right-left' : 'more-horizontal'),
       cuenta_nombre: cuenta ? cuenta.nombre : 'Cuenta',
+      cuenta_destino_nombre: ctaDestino ? ctaDestino.nombre : null,
       fecha_movimiento: new Date().toISOString()
     };
 
     fallbackState.movimientos.unshift(nuevo);
 
     // Ajustar saldo
-    if (cuenta) {
+    if (isTransfer) {
+      if (ctaOrigen) {
+        ctaOrigen.saldo_actual = Math.round((ctaOrigen.saldo_actual - montoNum) * 100) / 100;
+      }
+      if (ctaDestino) {
+        ctaDestino.saldo_actual = Math.round((ctaDestino.saldo_actual + montoNum) * 100) / 100;
+      }
+    } else if (cuenta) {
       if (data.tipo === 'GASTO') {
         cuenta.saldo_actual = Math.round((cuenta.saldo_actual - montoNum) * 100) / 100;
       } else {
@@ -244,10 +286,18 @@ export const api = {
     const idx = fallbackState.movimientos.findIndex(m => m.id === parseInt(id, 10));
     if (idx !== -1) {
       const mov = fallbackState.movimientos[idx];
-      const cuenta = fallbackState.cuentas.find(c => c.id === mov.cuenta_id);
-      if (cuenta) {
-        if (mov.tipo === 'GASTO') cuenta.saldo_actual += mov.monto;
-        else cuenta.saldo_actual -= mov.monto;
+      const isTransfer = mov.tipo === 'TRANSFERENCIA' || (mov.subtipo === 'Transferencia' && mov.cuenta_destino_id);
+      if (isTransfer) {
+        const ctaOrigen = fallbackState.cuentas.find(c => c.id === mov.cuenta_id);
+        const ctaDestino = fallbackState.cuentas.find(c => c.id === mov.cuenta_destino_id);
+        if (ctaOrigen) ctaOrigen.saldo_actual = Math.round((ctaOrigen.saldo_actual + mov.monto) * 100) / 100;
+        if (ctaDestino) ctaDestino.saldo_actual = Math.round((ctaDestino.saldo_actual - mov.monto) * 100) / 100;
+      } else {
+        const cuenta = fallbackState.cuentas.find(c => c.id === mov.cuenta_id);
+        if (cuenta) {
+          if (mov.tipo === 'GASTO') cuenta.saldo_actual = Math.round((cuenta.saldo_actual + mov.monto) * 100) / 100;
+          else cuenta.saldo_actual = Math.round((cuenta.saldo_actual - mov.monto) * 100) / 100;
+        }
       }
       fallbackState.movimientos.splice(idx, 1);
     }

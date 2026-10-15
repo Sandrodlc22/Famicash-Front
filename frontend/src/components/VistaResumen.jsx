@@ -15,6 +15,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { getCategoryIcon } from '../utils/iconosCategorias';
+import logoFamicash from '../assets/logo-famicash.png';
 
 export default function VistaResumen({
   resumen,
@@ -30,6 +31,7 @@ export default function VistaResumen({
   // Filtrar movimientos
   const filteredMovimientos = movimientos.filter((m) => {
     if (filterTipo === 'ALL') return true;
+    if (filterTipo === 'INGRESO') return m.tipo?.toUpperCase() === 'INGRESO' || m.tipo?.toUpperCase() === 'TRANSFERENCIA';
     return m.tipo?.toUpperCase() === filterTipo;
   });
 
@@ -74,12 +76,16 @@ export default function VistaResumen({
 
   return (
     <div className="summary-view-wrapper">
-      {/* 1. Header con selector de mes y acciones */}
+      {/* 1. Header con logo FamiCash, selector de mes y acciones */}
       <header className="summary-top-bar">
+        <div className="summary-logo-wrap">
+          <img src={logoFamicash} alt="FamiCash" className="summary-famicash-logo" />
+        </div>
+
         <div className="summary-month-pill">
-          <Calendar size={18} className="month-cal-icon" />
+          <Calendar size={14} className="month-cal-icon" />
           <span className="month-text">Octubre 2026</span>
-          <ChevronDown size={16} />
+          <ChevronDown size={14} />
         </div>
 
         <div className="summary-header-actions">
@@ -89,7 +95,7 @@ export default function VistaResumen({
             onClick={handleRefreshClick}
             title="Actualizar datos"
           >
-            <RefreshCw size={18} />
+            <RefreshCw size={17} />
           </button>
         </div>
       </header>
@@ -272,12 +278,13 @@ export default function VistaResumen({
                   {/* Elementos del grupo (Tarjetas de movimiento) */}
                   <div className="group-items-list">
                     {group.items.map((mov) => {
+                      const isTransfer = mov.tipo === 'TRANSFERENCIA' || mov.subtipo === 'Transferencia';
                       const isGasto = mov.tipo === 'GASTO';
                       return (
                         <div key={mov.id} className="transaction-item-row">
                           {/* Icono de Categoría */}
-                          <div className={`tx-icon-wrapper ${isGasto ? 'gasto-theme' : 'ingreso-theme'}`}>
-                            {getCategoryIcon(mov.categoria_icono || mov.categoria_nombre, 22)}
+                          <div className={`tx-icon-wrapper ${isTransfer ? 'transfer-theme' : isGasto ? 'gasto-theme' : 'ingreso-theme'}`}>
+                            {getCategoryIcon(isTransfer ? 'arrow-right-left' : (mov.categoria_icono || mov.categoria_nombre), 22)}
                           </div>
 
                           {/* Info central */}
@@ -288,20 +295,22 @@ export default function VistaResumen({
                             <span className="tx-meta-info">
                               {mov.subtipo ? `${mov.subtipo} • ` : ''}
                               <strong className="tx-cat-tag">#{mov.categoria_nombre || 'general'}</strong>
-                              {mov.cuenta_nombre ? ` • ${mov.cuenta_nombre}` : ''}
+                              {isTransfer && mov.cuenta_destino_nombre
+                                ? ` • ${mov.cuenta_nombre} ➔ ${mov.cuenta_destino_nombre}`
+                                : (mov.cuenta_nombre ? ` • ${mov.cuenta_nombre}` : '')}
                             </span>
                           </div>
 
                           {/* Monto y Acción */}
                           <div className="tx-amount-col">
-                            <span className={`tx-amount-value ${isGasto ? 'amount-negative' : 'amount-positive'}`}>
-                              {isGasto ? '-' : '+'}S/ {parseFloat(mov.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                            <span className={`tx-amount-value ${isTransfer ? 'amount-transfer' : isGasto ? 'amount-negative' : 'amount-positive'}`}>
+                              {isTransfer ? '⇄ ' : isGasto ? '-' : '+'}S/ {parseFloat(mov.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                             </span>
                             <button
                               type="button"
                               className="tx-delete-btn"
                               onClick={() => {
-                                if (window.confirm(`¿Eliminar este movimiento de S/ ${mov.monto} y restaurar el saldo de la cuenta?`)) {
+                                if (window.confirm(`¿Eliminar este movimiento de S/ ${mov.monto} y restaurar los saldos?`)) {
                                   onDeleteMovimiento(mov.id);
                                 }
                               }}

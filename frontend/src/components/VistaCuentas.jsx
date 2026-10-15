@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CreditCard, Plus, ArrowUpRight, Shield, Wallet, Building2, Banknote } from 'lucide-react';
+import logoFamicash from '../assets/logo-famicash.png';
 
 export default function VistaCuentas({ cuentas, onRefresh, onGoToExpense }) {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -24,7 +25,9 @@ export default function VistaCuentas({ cuentas, onRefresh, onGoToExpense }) {
     <div className="accounts-view-wrapper">
       <header className="mobile-app-header">
         <div className="header-avatar-btn-placeholder"></div>
-        <h1 className="header-brand-title">Mis Cuentas</h1>
+        <div className="header-logo-container">
+          <img src={logoFamicash} alt="FamiCash" className="header-famicash-logo" />
+        </div>
         <button
           type="button"
           className="header-icon-btn"

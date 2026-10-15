@@ -3,11 +3,11 @@ import {
   Bell,
   Lock,
   Users,
-  HelpCircle,
   ChevronRight,
   LogOut,
   Pencil
 } from 'lucide-react';
+import logoFamicash from '../assets/logo-famicash.png';
 
 export default function VistaPerfil({ usuario, onLogout }) {
   return (
@@ -15,7 +15,9 @@ export default function VistaPerfil({ usuario, onLogout }) {
       {/* Header FamiCash */}
       <header className="mobile-app-header">
         <div className="header-avatar-btn-placeholder"></div>
-        <h1 className="header-brand-title">FamiCash</h1>
+        <div className="header-logo-container">
+          <img src={logoFamicash} alt="FamiCash" className="header-famicash-logo" />
+        </div>
         <button
           type="button"
           className="header-icon-btn"
@@ -82,17 +84,6 @@ export default function VistaPerfil({ usuario, onLogout }) {
             <div className="menu-text-col">
               <span className="menu-item-title">Familiares vinculados</span>
               <span className="menu-item-subtitle">Gestionar accesos</span>
-            </div>
-            <ChevronRight size={18} className="menu-chevron" />
-          </div>
-
-          {/* 4. Centro de Soporte */}
-          <div className="profile-menu-item" onClick={() => alert('Centro de ayuda FamiCash 24/7.')}>
-            <div className="menu-icon-box support-box">
-              <HelpCircle size={20} />
-            </div>
-            <div className="menu-text-col">
-              <span className="menu-item-title">Centro de Soporte</span>
             </div>
             <ChevronRight size={18} className="menu-chevron" />
           </div>
