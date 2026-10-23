@@ -94,7 +94,7 @@ export default function VistaRegistro({ onRegisterSuccess, onGoToLogin }) {
         {success && (
           <div className="register-success-alert">
             <CheckCircle2 size={16} />
-            <span>¡Cuenta creada con éxito! Entrando...</span>
+            <span>¡Cuenta creada con éxito! Redirigiendo al inicio de sesión...</span>
           </div>
         )}
 

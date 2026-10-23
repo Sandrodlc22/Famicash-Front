@@ -327,17 +327,56 @@
 }
 
 .password-input {
-  padding-right: 42px;
+  padding-right: 44px;
+}
+
+/* Ocultar iconos nativos de contraseñas de Microsoft Edge y Windows */
+.password-input::-ms-reveal,
+.password-input::-ms-clear,
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
 }
 
 .toggle-password-btn {
   position: absolute;
-  right: 14px;
+  right: 12px;
   color: #9ca3af;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  z-index: 2;
+  transition: color 0.15s ease;
 }
 
 .toggle-password-btn:hover {
-  color: var(--text-dark);
+  color: var(--primary-forest);
+}
+
+.login-success-alert {
+  width: 100%;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* Botón Iniciar Sesión (Mockup 1) */
@@ -2165,16 +2204,23 @@
   display: flex;
   gap: 4px;
   background: #eef2f0;
-  padding: 2px;
-  border-radius: 8px;
+  padding: 3px;
+  border-radius: 9px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.history-filters-row::-webkit-scrollbar {
+  display: none;
 }
 
 .filter-chip {
-  padding: 3px 8px;
+  padding: 4px 9px;
   font-size: 11px;
   font-weight: 600;
   color: #64748b;
-  border-radius: 6px;
+  border-radius: 7px;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 
@@ -2343,6 +2389,25 @@
 
 .amount-transfer {
   color: #0284c7;
+}
+
+.amount-transfer-out {
+  color: #0284c7;
+}
+
+.amount-transfer-in {
+  color: #0284c7;
+}
+
+.tx-transfer-tag {
+  color: #0284c7;
+  font-weight: 700;
+  background: #e0f2fe;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  display: inline-block;
+  letter-spacing: 0.2px;
 }
 
 .tx-delete-btn {

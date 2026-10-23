@@ -148,13 +148,15 @@ export default function VistaIngresoMonto({
       await onSaveMovimiento({
         cuenta_id: cuentaId,
         cuenta_destino_id: isTransfer ? cuentaDestinoId : null,
+        cuenta_nombre: selectedCuenta?.nombre,
+        cuenta_destino_nombre: isTransfer ? selectedCuentaDestino?.nombre : null,
         categoria_id: finalCategoriaId,
         tipo: isTransfer ? 'TRANSFERENCIA' : tipo,
         subtipo,
         monto: numericMonto,
         descripcion: descripcion.trim() || (
           isTransfer
-            ? `Transferencia de ${selectedCuenta?.nombre} a ${selectedCuentaDestino?.nombre}`
+            ? ''
             : subtipo === 'Sueldo'
               ? `Ingreso de Sueldo a ${selectedCuenta?.nombre}`
               : `${subtipo} - ${currentCategories.find(c => c.id === categoriaId)?.nombre || 'General'}`

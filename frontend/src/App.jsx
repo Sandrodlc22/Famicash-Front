@@ -21,6 +21,7 @@ export default function App() {
   const [resumen, setResumen] = useState(null);
   const [isBackendConnected, setIsBackendConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loginNotification, setLoginNotification] = useState('');
 
   // Cargar datos iniciales y comprobar conectividad con backend
   const loadAppData = async () => {
@@ -47,26 +48,39 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadAppData();
+    const initApp = async () => {
+      try {
+        const session = await api.getMe();
+        if (session && session.usuario) {
+          setUsuario(session.usuario);
+          setIsAuthenticated(true);
+          const initial = session.usuario.vistaInicial || 'expense';
+          setCurrentView(initial);
+        }
+      } catch (err) {
+        // No hay sesión activa previa
+      }
+      await loadAppData();
+    };
+    initApp();
   }, []);
 
   // Manejo de Inicio de Sesión
   const handleLogin = async (email, password) => {
     const res = await api.login(email, password);
+    setLoginNotification('');
     setUsuario(res.usuario);
     setIsAuthenticated(true);
-    // Flujo indicado por el usuario: logeo >> ingresos un gastos >> escoger una cuenta >> categoría >> monto y registro >> resumen
-    setCurrentView('expense');
+    const initialView = res.usuario?.vistaInicial || (res.usuario?.vistasPermitidas?.includes('expense') ? 'expense' : res.usuario?.vistasPermitidas?.[0] || 'summary');
+    setCurrentView(initialView);
     await loadAppData();
   };
 
-  // Manejo de Registro de Nuevo Usuario
+  // Manejo de Registro de Nuevo Usuario: Registrar y enviar al login para colocar credenciales
   const handleRegister = async (userData) => {
-    const res = await api.register(userData);
-    setUsuario(res.usuario);
-    setIsAuthenticated(true);
-    setCurrentView('expense');
-    await loadAppData();
+    await api.register(userData);
+    setLoginNotification('¡Cuenta registrada con éxito! Ingresa tu correo y contraseña para iniciar sesión.');
+    setCurrentView('login');
   };
 
   // Manejo de Registro de Movimiento
@@ -84,9 +98,11 @@ export default function App() {
   };
 
   // Cerrar Sesión
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await api.logout();
     setIsAuthenticated(false);
     setUsuario(null);
+    setLoginNotification('');
     setCurrentView('login');
   };
 
@@ -97,12 +113,19 @@ export default function App() {
         {currentView === 'login' ? (
           <VistaLogin
             onLoginSuccess={handleLogin}
-            onGoToRegister={() => setCurrentView('register')}
+            onGoToRegister={() => {
+              setLoginNotification('');
+              setCurrentView('register');
+            }}
+            notificationMessage={loginNotification}
           />
         ) : currentView === 'register' ? (
           <VistaRegistro
             onRegisterSuccess={handleRegister}
-            onGoToLogin={() => setCurrentView('login')}
+            onGoToLogin={() => {
+              setLoginNotification('');
+              setCurrentView('login');
+            }}
           />
         ) : (
           <div className="authenticated-layout">
@@ -148,6 +171,7 @@ export default function App() {
             <NavegacionInferior
               currentView={currentView}
               setView={setCurrentView}
+              vistasPermitidas={usuario?.vistasPermitidas}
             />
           </div>
         )}

@@ -47,7 +47,7 @@ export default function VistaPerfil({ usuario, onLogout }) {
 
           <div className="profile-role-pill">
             <span className="role-green-dot"></span>
-            <span>Cuenta Principal</span>
+            <span>{usuario?.rol || 'Cuenta Principal'}</span>
           </div>
         </div>
 

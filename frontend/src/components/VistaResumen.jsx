@@ -12,7 +12,8 @@ import {
   PlusCircle,
   PiggyBank,
   RefreshCw,
-  Wallet
+  Wallet,
+  ArrowRightLeft
 } from 'lucide-react';
 import { getCategoryIcon } from '../utils/iconosCategorias';
 import logoFamicash from '../assets/logo-famicash.png';
@@ -25,14 +26,17 @@ export default function VistaResumen({
   onGoToExpense,
   onRefresh
 }) {
-  const [filterTipo, setFilterTipo] = useState('ALL'); // 'ALL', 'GASTO', 'INGRESO'
+  const [filterTipo, setFilterTipo] = useState('ALL'); // 'ALL', 'GASTO', 'INGRESO', 'TRANSFERENCIA'
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filtrar movimientos
   const filteredMovimientos = movimientos.filter((m) => {
+    const isTransf = m.tipo === 'TRANSFERENCIA' || m.subtipo === 'Transferencia' || m.categoria_nombre === 'Transferencia';
     if (filterTipo === 'ALL') return true;
-    if (filterTipo === 'INGRESO') return m.tipo?.toUpperCase() === 'INGRESO' || m.tipo?.toUpperCase() === 'TRANSFERENCIA';
-    return m.tipo?.toUpperCase() === filterTipo;
+    if (filterTipo === 'TRANSFERENCIA') return isTransf;
+    if (filterTipo === 'GASTO') return m.tipo?.toUpperCase() === 'GASTO' && !isTransf;
+    if (filterTipo === 'INGRESO') return m.tipo?.toUpperCase() === 'INGRESO' && !isTransf;
+    return true;
   });
 
   // Agrupar movimientos por fecha para el feed
@@ -56,7 +60,8 @@ export default function VistaResumen({
       };
     }
 
-    if (mov.tipo === 'GASTO') {
+    const isTransf = mov.tipo === 'TRANSFERENCIA' || mov.subtipo === 'Transferencia' || mov.categoria_nombre === 'Transferencia';
+    if (mov.tipo === 'GASTO' && !isTransf) {
       acc[dateLabel].totalGasto += parseFloat(mov.monto || 0);
     }
     acc[dateLabel].items.push(mov);
@@ -221,7 +226,7 @@ export default function VistaResumen({
         <section className="transactions-history-feed">
           <div className="history-feed-header">
             <h3 className="section-title">Historial de Movimientos</h3>
-            {/* Filtros rápidos: Todos, Gastos, Ingresos */}
+            {/* Filtros rápidos: Todos, Gastos, Ingresos, Transferencias */}
             <div className="history-filters-row">
               <button
                 type="button"
@@ -244,6 +249,13 @@ export default function VistaResumen({
               >
                 Ingresos
               </button>
+              <button
+                type="button"
+                className={`filter-chip ${filterTipo === 'TRANSFERENCIA' ? 'active' : ''}`}
+                onClick={() => setFilterTipo('TRANSFERENCIA')}
+              >
+                Transferencias
+              </button>
             </div>
           </div>
 
@@ -251,14 +263,24 @@ export default function VistaResumen({
           {Object.keys(groupedMovements).length === 0 ? (
             <div className="empty-history-state">
               <PiggyBank size={48} className="empty-piggy-icon" />
-              <p className="empty-history-text">No hay movimientos registrados en este filtro.</p>
+              <p className="empty-history-text">
+                {filterTipo === 'TRANSFERENCIA'
+                  ? 'No hay transferencias registradas entre cuentas.'
+                  : filterTipo === 'GASTO'
+                    ? 'No hay gastos registrados en este período.'
+                    : filterTipo === 'INGRESO'
+                      ? 'No hay ingresos registrados en este período.'
+                      : 'No hay movimientos registrados en este filtro.'}
+              </p>
               <button
                 type="button"
                 className="add-first-expense-btn"
                 onClick={onGoToExpense}
               >
                 <PlusCircle size={18} />
-                <span>Registrar un Gasto o Ingreso</span>
+                <span>
+                  {filterTipo === 'TRANSFERENCIA' ? 'Realizar una Transferencia' : 'Registrar un Movimiento'}
+                </span>
               </button>
             </div>
           ) : (
@@ -278,39 +300,63 @@ export default function VistaResumen({
                   {/* Elementos del grupo (Tarjetas de movimiento) */}
                   <div className="group-items-list">
                     {group.items.map((mov) => {
-                      const isTransfer = mov.tipo === 'TRANSFERENCIA' || mov.subtipo === 'Transferencia';
+                      const isTransfer = mov.tipo === 'TRANSFERENCIA' || mov.subtipo === 'Transferencia' || mov.categoria_nombre === 'Transferencia';
                       const isGasto = mov.tipo === 'GASTO';
+                      const cleanDesc = (mov.descripcion || mov.categoria_nombre || 'Movimiento')
+                        .replace(/\s*\[TRF-[^\]]+\]/, '');
+
                       return (
                         <div key={mov.id} className="transaction-item-row">
                           {/* Icono de Categoría */}
                           <div className={`tx-icon-wrapper ${isTransfer ? 'transfer-theme' : isGasto ? 'gasto-theme' : 'ingreso-theme'}`}>
-                            {getCategoryIcon(isTransfer ? 'arrow-right-left' : (mov.categoria_icono || mov.categoria_nombre), 22)}
+                            {isTransfer ? (
+                              <ArrowRightLeft size={20} />
+                            ) : (
+                              getCategoryIcon(mov.categoria_icono || mov.categoria_nombre, 22)
+                            )}
                           </div>
 
                           {/* Info central */}
                           <div className="tx-details-col">
-                            <span className="tx-title">
-                              {mov.descripcion || mov.categoria_nombre || 'Movimiento'}
+                            <span className="tx-title" title={cleanDesc}>
+                              {cleanDesc}
                             </span>
                             <span className="tx-meta-info">
-                              {mov.subtipo ? `${mov.subtipo} • ` : ''}
-                              <strong className="tx-cat-tag">#{mov.categoria_nombre || 'general'}</strong>
-                              {isTransfer && mov.cuenta_destino_nombre
-                                ? ` • ${mov.cuenta_nombre} ➔ ${mov.cuenta_destino_nombre}`
-                                : (mov.cuenta_nombre ? ` • ${mov.cuenta_nombre}` : '')}
+                              {isTransfer ? (
+                                <>
+                                  <span className="tx-transfer-tag">Transferencia</span>
+                                  {mov.cuenta_nombre ? ` • ${mov.cuenta_nombre}` : ''}
+                                  {mov.cuenta_destino_nombre ? ` ➔ ${mov.cuenta_destino_nombre}` : ''}
+                                </>
+                              ) : (
+                                <>
+                                  {mov.subtipo ? `${mov.subtipo} • ` : ''}
+                                  <strong className="tx-cat-tag">#{mov.categoria_nombre || 'general'}</strong>
+                                  {mov.cuenta_nombre ? ` • ${mov.cuenta_nombre}` : ''}
+                                </>
+                              )}
                             </span>
                           </div>
 
                           {/* Monto y Acción */}
                           <div className="tx-amount-col">
-                            <span className={`tx-amount-value ${isTransfer ? 'amount-transfer' : isGasto ? 'amount-negative' : 'amount-positive'}`}>
-                              {isTransfer ? '⇄ ' : isGasto ? '-' : '+'}S/ {parseFloat(mov.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                            <span
+                              className={`tx-amount-value ${
+                                isTransfer
+                                  ? (isGasto ? 'amount-transfer-out' : 'amount-transfer-in')
+                                  : (isGasto ? 'amount-negative' : 'amount-positive')
+                              }`}
+                            >
+                              {isTransfer ? '⇄ ' : ''}
+                              {isGasto ? '-' : '+'}S/ {parseFloat(mov.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                             </span>
                             <button
                               type="button"
                               className="tx-delete-btn"
                               onClick={() => {
-                                if (window.confirm(`¿Eliminar este movimiento de S/ ${mov.monto} y restaurar los saldos?`)) {
+                                if (window.confirm(isTransfer
+                                  ? `¿Eliminar esta transferencia de S/ ${parseFloat(mov.monto).toFixed(2)} y restaurar los saldos en ambas cuentas?`
+                                  : `¿Eliminar este movimiento de S/ ${parseFloat(mov.monto).toFixed(2)} y restaurar el saldo?`)) {
                                   onDeleteMovimiento(mov.id);
                                 }
                               }}

@@ -105,6 +105,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 3000) {
   try {
     const response = await fetch(url, {
       ...options,
+      credentials: 'include',
       signal: controller.signal
     });
     clearTimeout(id);
@@ -132,10 +133,15 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      if (res.ok) {
-        return await res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Credenciales inválidas');
       }
+      return data;
     } catch (e) {
+      if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('abort')) {
+        throw e;
+      }
       console.warn('Backend offline, usando autenticación local:', e.message);
     }
     // Fallback login
@@ -153,10 +159,15 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
       });
-      if (res.ok) {
-        return await res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al registrar usuario');
       }
+      return data;
     } catch (e) {
+      if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('abort')) {
+        throw e;
+      }
       console.warn('Backend offline, usando registro local:', e.message);
     }
     // Fallback register
@@ -165,6 +176,7 @@ export const api = {
       nombre: userData.nombre || 'Nuevo Usuario',
       email: userData.email,
       rol: userData.rol || 'Administrador Familiar',
+      vistasPermitidas: userData.rol === 'Hijo / Hija' ? ['expense', 'summary', 'profile'] : ['summary', 'expense', 'accounts', 'profile'],
       avatar: userData.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256'
     };
     fallbackState.usuario = nuevoUsuario;
@@ -173,6 +185,30 @@ export const api = {
       token: 'auth-token-famicash-' + Date.now(),
       usuario: nuevoUsuario
     };
+  },
+
+  async getMe() {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/auth/me`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      // Sesión no activa o backend offline
+    }
+    return null;
+  },
+
+  async logout() {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/auth/logout`, {
+        method: 'POST'
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Error en logout:', e.message);
+    }
+    return { message: 'Sesión cerrada' };
   },
 
   async getCuentas() {
@@ -210,6 +246,121 @@ export const api = {
   },
 
   async createMovimiento(data) {
+    const isTransfer = data.tipo === 'TRANSFERENCIA' || (data.subtipo === 'Transferencia' && Boolean(data.cuenta_destino_id));
+    const catTransfer = fallbackState.categorias.find(c => c.nombre === 'Transferencia') || { id: 10, nombre: 'Transferencia' };
+    const catId = isTransfer ? catTransfer.id : parseInt(data.categoria_id, 10);
+    const montoNum = parseFloat(data.monto);
+
+    if (isTransfer) {
+      const origenId = parseInt(data.cuenta_id, 10);
+      const destinoId = parseInt(data.cuenta_destino_id, 10);
+      const ctaOrigen = fallbackState.cuentas.find(c => c.id === origenId);
+      const ctaDestino = fallbackState.cuentas.find(c => c.id === destinoId);
+      const nombreOrigen = data.cuenta_nombre || ctaOrigen?.nombre || `Cuenta #${origenId}`;
+      const nombreDestino = data.cuenta_destino_nombre || ctaDestino?.nombre || `Cuenta #${destinoId}`;
+      const userNote = data.descripcion ? data.descripcion.trim() : '';
+
+      const trfRef = `TRF-${Date.now()}`;
+      const descSalida = userNote
+        ? `Transferencia enviada a ${nombreDestino}: ${userNote} [${trfRef}]`
+        : `Transferencia enviada a ${nombreDestino} [${trfRef}]`;
+      const descEntrada = userNote
+        ? `Transferencia recibida de ${nombreOrigen}: ${userNote} [${trfRef}]`
+        : `Transferencia recibida de ${nombreOrigen} [${trfRef}]`;
+
+      // 1. Intentar persistir en Backend si está activo (creando salida en origen y entrada en destino)
+      try {
+        const [resSalida, resEntrada] = await Promise.all([
+          fetchWithTimeout(`${API_BASE}/movimientos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cuenta_id: origenId,
+              categoria_id: catId,
+              tipo: 'GASTO',
+              subtipo: 'Transferencia',
+              monto: montoNum,
+              descripcion: descSalida
+            })
+          }),
+          fetchWithTimeout(`${API_BASE}/movimientos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cuenta_id: destinoId,
+              categoria_id: catId,
+              tipo: 'INGRESO',
+              subtipo: 'Transferencia',
+              monto: montoNum,
+              descripcion: descEntrada
+            })
+          })
+        ]);
+
+        if (resSalida.ok && resEntrada.ok) {
+          const dataSalida = await resSalida.json();
+          const dataEntrada = await resEntrada.json();
+          return {
+            message: 'Transferencia registrada con éxito en backend',
+            salida: dataSalida.movimiento,
+            entrada: dataEntrada.movimiento
+          };
+        }
+      } catch (e) {
+        console.warn('Backend offline o falló al guardar transferencia, usando fallback local:', e.message);
+      }
+
+      // 2. Fallback local si backend no está disponible
+      const movSalida = {
+        id: Date.now(),
+        cuenta_id: origenId,
+        cuenta_destino_id: destinoId,
+        categoria_id: catId,
+        tipo: 'GASTO',
+        monto: montoNum,
+        subtipo: 'Transferencia',
+        descripcion: descSalida,
+        categoria_nombre: 'Transferencia',
+        categoria_icono: 'arrow-down-left',
+        cuenta_nombre: nombreOrigen,
+        cuenta_destino_nombre: nombreDestino,
+        fecha_movimiento: new Date().toISOString()
+      };
+
+      const movEntrada = {
+        id: Date.now() + 1,
+        cuenta_id: destinoId,
+        cuenta_destino_id: origenId,
+        categoria_id: catId,
+        tipo: 'INGRESO',
+        monto: montoNum,
+        subtipo: 'Transferencia',
+        descripcion: descEntrada,
+        categoria_nombre: 'Transferencia',
+        categoria_icono: 'arrow-down-left',
+        cuenta_nombre: nombreDestino,
+        cuenta_destino_nombre: nombreOrigen,
+        fecha_movimiento: new Date().toISOString()
+      };
+
+      fallbackState.movimientos.unshift(movEntrada);
+      fallbackState.movimientos.unshift(movSalida);
+
+      if (ctaOrigen) {
+        ctaOrigen.saldo_actual = Math.round((ctaOrigen.saldo_actual - montoNum) * 100) / 100;
+      }
+      if (ctaDestino) {
+        ctaDestino.saldo_actual = Math.round((ctaDestino.saldo_actual + montoNum) * 100) / 100;
+      }
+
+      return {
+        message: 'Transferencia registrada localmente',
+        salida: movSalida,
+        entrada: movEntrada
+      };
+    }
+
+    // Flujo normal para GASTO o INGRESO (no transferencia)
     try {
       const res = await fetchWithTimeout(`${API_BASE}/movimientos`, {
         method: 'POST',
@@ -223,42 +374,27 @@ export const api = {
       console.warn('Backend offline, guardando localmente');
     }
 
-    // Local fallback creation
+    // Local fallback creation para no-transferencias
     const cat = fallbackState.categorias.find(c => c.id === parseInt(data.categoria_id, 10));
     const cuenta = fallbackState.cuentas.find(c => c.id === parseInt(data.cuenta_id, 10));
-    const montoNum = parseFloat(data.monto);
-
-    const isTransfer = data.tipo === 'TRANSFERENCIA' || (data.subtipo === 'Transferencia' && data.cuenta_destino_id);
-    const ctaOrigen = cuenta;
-    const ctaDestino = isTransfer ? fallbackState.cuentas.find(c => c.id === parseInt(data.cuenta_destino_id, 10)) : null;
 
     const nuevo = {
       id: Date.now(),
       cuenta_id: parseInt(data.cuenta_id, 10),
-      cuenta_destino_id: ctaDestino ? ctaDestino.id : null,
       categoria_id: parseInt(data.categoria_id, 10),
       tipo: data.tipo,
       monto: montoNum,
       subtipo: data.subtipo || 'Cotidiano',
       descripcion: data.descripcion || '',
-      categoria_nombre: cat ? cat.nombre : (isTransfer ? 'Transferencia' : 'General'),
-      categoria_icono: cat ? cat.icono : (isTransfer ? 'arrow-right-left' : 'more-horizontal'),
+      categoria_nombre: cat ? cat.nombre : 'General',
+      categoria_icono: cat ? cat.icono : 'more-horizontal',
       cuenta_nombre: cuenta ? cuenta.nombre : 'Cuenta',
-      cuenta_destino_nombre: ctaDestino ? ctaDestino.nombre : null,
       fecha_movimiento: new Date().toISOString()
     };
 
     fallbackState.movimientos.unshift(nuevo);
 
-    // Ajustar saldo
-    if (isTransfer) {
-      if (ctaOrigen) {
-        ctaOrigen.saldo_actual = Math.round((ctaOrigen.saldo_actual - montoNum) * 100) / 100;
-      }
-      if (ctaDestino) {
-        ctaDestino.saldo_actual = Math.round((ctaDestino.saldo_actual + montoNum) * 100) / 100;
-      }
-    } else if (cuenta) {
+    if (cuenta) {
       if (data.tipo === 'GASTO') {
         cuenta.saldo_actual = Math.round((cuenta.saldo_actual - montoNum) * 100) / 100;
       } else {
@@ -274,32 +410,63 @@ export const api = {
   },
 
   async deleteMovimiento(id) {
+    // Detectar si este movimiento pertenece a una transferencia emparejada [TRF-xxxx]
+    let currentMovs = [];
+    try {
+      currentMovs = await this.getMovimientos();
+    } catch {
+      currentMovs = fallbackState.movimientos;
+    }
+    const targetMov = (currentMovs || []).find(m => m.id === parseInt(id, 10));
+    let pairedMov = null;
+
+    if (targetMov && targetMov.descripcion) {
+      const match = targetMov.descripcion.match(/\[(TRF-\d+)\]/);
+      if (match) {
+        const trfTag = match[0];
+        pairedMov = (currentMovs || []).find(m => m.id !== targetMov.id && m.descripcion && m.descripcion.includes(trfTag));
+      }
+    }
+
     try {
       const res = await fetchWithTimeout(`${API_BASE}/movimientos/${id}`, {
         method: 'DELETE'
       });
+      // Si hay un movimiento emparejado, eliminarlo también del backend para restaurar ambos saldos
+      if (pairedMov) {
+        try {
+          await fetchWithTimeout(`${API_BASE}/movimientos/${pairedMov.id}`, { method: 'DELETE' });
+        } catch (e) {
+          console.warn('Error eliminando movimiento transfer emparejado:', e.message);
+        }
+      }
       if (res.ok) return await res.json();
     } catch (e) {
       console.warn('Backend offline, borrando localmente');
     }
 
+    // Eliminación en fallback local
     const idx = fallbackState.movimientos.findIndex(m => m.id === parseInt(id, 10));
     if (idx !== -1) {
       const mov = fallbackState.movimientos[idx];
-      const isTransfer = mov.tipo === 'TRANSFERENCIA' || (mov.subtipo === 'Transferencia' && mov.cuenta_destino_id);
-      if (isTransfer) {
-        const ctaOrigen = fallbackState.cuentas.find(c => c.id === mov.cuenta_id);
-        const ctaDestino = fallbackState.cuentas.find(c => c.id === mov.cuenta_destino_id);
-        if (ctaOrigen) ctaOrigen.saldo_actual = Math.round((ctaOrigen.saldo_actual + mov.monto) * 100) / 100;
-        if (ctaDestino) ctaDestino.saldo_actual = Math.round((ctaDestino.saldo_actual - mov.monto) * 100) / 100;
-      } else {
-        const cuenta = fallbackState.cuentas.find(c => c.id === mov.cuenta_id);
-        if (cuenta) {
-          if (mov.tipo === 'GASTO') cuenta.saldo_actual = Math.round((cuenta.saldo_actual + mov.monto) * 100) / 100;
-          else cuenta.saldo_actual = Math.round((cuenta.saldo_actual - mov.monto) * 100) / 100;
-        }
+      const cuenta = fallbackState.cuentas.find(c => c.id === mov.cuenta_id);
+      if (cuenta) {
+        if (mov.tipo === 'GASTO') cuenta.saldo_actual = Math.round((cuenta.saldo_actual + mov.monto) * 100) / 100;
+        else cuenta.saldo_actual = Math.round((cuenta.saldo_actual - mov.monto) * 100) / 100;
       }
       fallbackState.movimientos.splice(idx, 1);
+    }
+    if (pairedMov) {
+      const pIdx = fallbackState.movimientos.findIndex(m => m.id === pairedMov.id);
+      if (pIdx !== -1) {
+        const pMov = fallbackState.movimientos[pIdx];
+        const pCuenta = fallbackState.cuentas.find(c => c.id === pMov.cuenta_id);
+        if (pCuenta) {
+          if (pMov.tipo === 'GASTO') pCuenta.saldo_actual = Math.round((pCuenta.saldo_actual + pMov.monto) * 100) / 100;
+          else pCuenta.saldo_actual = Math.round((pCuenta.saldo_actual - pMov.monto) * 100) / 100;
+        }
+        fallbackState.movimientos.splice(pIdx, 1);
+      }
     }
     return { message: 'Eliminado con éxito' };
   },
@@ -321,6 +488,9 @@ export const api = {
     const desgloseCategorias = {};
 
     movimientos.forEach(m => {
+      const isTransfer = m.tipo === 'TRANSFERENCIA' || m.subtipo === 'Transferencia' || m.categoria_nombre === 'Transferencia';
+      if (isTransfer) return;
+
       const mnt = parseFloat(m.monto || 0);
       if (m.tipo === 'GASTO') {
         totalGastos += mnt;

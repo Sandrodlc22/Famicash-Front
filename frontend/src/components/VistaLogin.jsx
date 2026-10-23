@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react';
 import logoFamicash from '../assets/logo-famicash.png';
 
-export default function VistaLogin({ onLoginSuccess, onGoToRegister }) {
-  const [email, setEmail] = useState('sandro@gmail.com');
-  const [password, setPassword] = useState('password123');
+export default function VistaLogin({ onLoginSuccess, onGoToRegister, notificationMessage }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,12 +26,6 @@ export default function VistaLogin({ onLoginSuccess, onGoToRegister }) {
     }
   };
 
-  const handleQuickAccess = () => {
-    setEmail('sandro@gmail.com');
-    setPassword('admin123');
-    handleSubmit();
-  };
-
   return (
     <div className="login-screen-wrapper">
       <div className="login-card">
@@ -44,6 +38,14 @@ export default function VistaLogin({ onLoginSuccess, onGoToRegister }) {
           />
           <p className="login-subtitle">Bienvenido a tu espacio financiero familiar.</p>
         </div>
+
+        {/* Mensaje de notificación / éxito de registro */}
+        {notificationMessage && (
+          <div className="login-success-alert">
+            <CheckCircle2 size={16} />
+            <span>{notificationMessage}</span>
+          </div>
+        )}
 
         {/* Mensaje de error si existe */}
         {error && <div className="login-error-alert">{error}</div>}
@@ -114,18 +116,6 @@ export default function VistaLogin({ onLoginSuccess, onGoToRegister }) {
             <span>{loading ? 'Accediendo...' : 'Iniciar Sesión'}</span>
             <ArrowRight size={20} className="btn-arrow-icon" />
           </button>
-
-          {/* Acceso Rápido */}
-          <div className="quick-access-box">
-            <button
-              type="button"
-              className="quick-demo-btn"
-              onClick={handleQuickAccess}
-            >
-              <ShieldCheck size={16} />
-              <span>Acceso Rápido (Sandro De la Cruz)</span>
-            </button>
-          </div>
         </form>
 
         {/* Footer Registro */}
