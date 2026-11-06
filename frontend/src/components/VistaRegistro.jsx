@@ -5,7 +5,6 @@ import logoFamicash from '../assets/logo-famicash.png';
 export default function VistaRegistro({ onRegisterSuccess, onGoToLogin }) {
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
-  const [rol, setRol] = useState('Administrador Familiar');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -13,15 +12,6 @@ export default function VistaRegistro({ onRegisterSuccess, onGoToLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-
-  // Opciones de roles familiares
-  const rolesFamiliares = [
-    'Administrador Familiar',
-    'Esposo / Padre',
-    'Esposa / Madre',
-    'Hijo / Hija',
-    'Familiar'
-  ];
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -49,7 +39,6 @@ export default function VistaRegistro({ onRegisterSuccess, onGoToLogin }) {
         nombre: nombre.trim(),
         email: email.trim().toLowerCase(),
         password,
-        rol,
         avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=256'
       });
     } catch (err) {
@@ -135,27 +124,6 @@ export default function VistaRegistro({ onRegisterSuccess, onGoToLogin }) {
                 required
                 className="form-input"
               />
-            </div>
-          </div>
-
-          {/* Rol en la Familia */}
-          <div className="form-group">
-            <label className="form-label" htmlFor="register-rol">
-              Rol en el Hogar
-            </label>
-            <div className="register-role-select-wrap">
-              <select
-                id="register-rol"
-                value={rol}
-                onChange={(e) => setRol(e.target.value)}
-                className="register-role-dropdown"
-              >
-                {rolesFamiliares.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
 

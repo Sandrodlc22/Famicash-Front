@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react';
 import logoFamicash from '../assets/logo-famicash.png';
+import { mostrarModalRecuperarPassword } from '../utils/notificaciones';
 
 export default function VistaLogin({ onLoginSuccess, onGoToRegister, notificationMessage }) {
   const [email, setEmail] = useState('');
@@ -80,7 +81,7 @@ export default function VistaLogin({ onLoginSuccess, onGoToRegister, notificatio
               <button
                 type="button"
                 className="forgot-password-link"
-                onClick={() => alert('Se ha enviado un enlace para restablecer tu contraseña a tu correo registrado.')}
+                onClick={mostrarModalRecuperarPassword}
               >
                 ¿Olvidaste tu contraseña?
               </button>

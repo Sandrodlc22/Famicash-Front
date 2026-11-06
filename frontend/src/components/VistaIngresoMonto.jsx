@@ -15,6 +15,12 @@ import {
 } from 'lucide-react';
 import { getCategoryIcon } from '../utils/iconosCategorias';
 import logoFamicash from '../assets/logo-famicash.png';
+import {
+  swalMobile,
+  mostrarCentroNotificaciones,
+  mostrarToastExito,
+  confirmarAccion
+} from '../utils/notificaciones';
 
 export default function VistaIngresoMonto({
   usuario,
@@ -116,20 +122,32 @@ export default function VistaIngresoMonto({
   const handleConfirm = async () => {
     const numericMonto = parseFloat(montoStr);
     if (isNaN(numericMonto) || numericMonto <= 0) {
-      alert('Por favor ingrese un monto mayor a 0 usando el teclado numérico');
+      swalMobile.fire({
+        icon: 'warning',
+        title: 'Monto requerido',
+        text: 'Por favor ingrese un monto mayor a 0 usando el teclado numérico.'
+      });
       return;
     }
 
     const isTransfer = tipo === 'INGRESO' && subtipo === 'Transferencia';
     if (isTransfer) {
       if (parseInt(cuentaId, 10) === parseInt(cuentaDestinoId, 10)) {
-        alert('Para transferir dinero, la cuenta de origen y de destino deben ser diferentes.');
+        swalMobile.fire({
+          icon: 'warning',
+          title: 'Cuentas iguales',
+          text: 'Para transferir dinero, la cuenta de origen y de destino deben ser diferentes.'
+        });
         return;
       }
       if (numericMonto > (selectedCuenta?.saldo_actual || 0)) {
-        const proceed = window.confirm(
-          `El monto (S/ ${numericMonto.toFixed(2)}) supera el saldo disponible de ${selectedCuenta?.nombre} (S/ ${selectedCuenta?.saldo_actual?.toFixed(2)}). ¿Deseas transferir de todas formas?`
-        );
+        const proceed = await confirmarAccion({
+          titulo: 'Saldo insuficiente',
+          texto: `El monto (S/ ${numericMonto.toFixed(2)}) supera el saldo disponible de ${selectedCuenta?.nombre} (S/ ${selectedCuenta?.saldo_actual?.toFixed(2)}). ¿Deseas transferir de todas formas?`,
+          confirmText: 'Sí, transferir',
+          cancelText: 'Cancelar',
+          icono: 'warning'
+        });
         if (!proceed) return;
       }
     }
@@ -167,12 +185,15 @@ export default function VistaIngresoMonto({
       setMontoStr('0');
       setDescripcion('');
 
-      setShowSuccessToast(true);
-      setTimeout(() => {
-        setShowSuccessToast(false);
-      }, 1500);
+      mostrarToastExito(
+        isTransfer ? '¡Transferencia realizada con éxito!' : '¡Movimiento registrado con éxito!'
+      );
     } catch (err) {
-      alert('Error al registrar: ' + err.message);
+      swalMobile.fire({
+        icon: 'error',
+        title: 'Error al registrar',
+        text: err.message || 'Ocurrió un problema al guardar el movimiento.'
+      });
     } finally {
       setLoading(false);
     }
@@ -190,7 +211,7 @@ export default function VistaIngresoMonto({
         >
           <img
             src={usuario?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150'}
-            alt={usuario?.nombre || 'Sandro De la Cruz'}
+            alt={usuario?.nombre || 'Usuario'}
             className="header-avatar-img"
           />
         </button>
@@ -202,7 +223,8 @@ export default function VistaIngresoMonto({
         <button
           type="button"
           className="header-icon-btn"
-          onClick={() => alert('Tienes 1 alerta: Presupuesto familiar en buen estado.')}
+          onClick={() => mostrarCentroNotificaciones()}
+          title="Ver Notificaciones"
         >
           <Bell size={22} className="header-bell-icon" />
           <span className="bell-badge-dot"></span>

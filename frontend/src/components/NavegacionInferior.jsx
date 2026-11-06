@@ -1,10 +1,26 @@
 import React from 'react';
-import { LayoutGrid, Plus, CreditCard, User } from 'lucide-react';
+import { LayoutGrid, Plus, CreditCard, User, ShieldCheck } from 'lucide-react';
 
-export default function NavegacionInferior({ currentView, setView, vistasPermitidas = ['summary', 'expense', 'accounts', 'profile'] }) {
+export default function NavegacionInferior({
+  currentView,
+  setView,
+  vistasPermitidas = ['summary', 'expense', 'accounts', 'profile'],
+  usuario
+}) {
   const allowed = Array.isArray(vistasPermitidas) && vistasPermitidas.length > 0
     ? vistasPermitidas
     : ['summary', 'expense', 'accounts', 'profile'];
+
+  // Estrictamente SOLO el rol de Administrador Familiar puede ver la pestaña de admin
+  const roleName = (usuario?.rol || '').trim().toLowerCase();
+  const isAdmin = Boolean(
+    usuario && (
+      usuario.esAdmin === true ||
+      roleName === 'administrador familiar' ||
+      roleName === 'admin' ||
+      usuario.rolId === 1
+    )
+  );
 
   return (
     <nav className="bottom-nav-container">
@@ -47,7 +63,20 @@ export default function NavegacionInferior({ currentView, setView, vistasPermiti
         </button>
       )}
 
-      {/* 4. Perfil */}
+      {/* 4. Panel Admin (EXCLUSIVO y ÚNICAMENTE para Administrador Familiar) */}
+      {isAdmin && (
+        <button
+          type="button"
+          className={`nav-tab-btn ${currentView === 'admin' ? 'active' : ''}`}
+          onClick={() => setView('admin')}
+          title="Gestión total del hogar"
+        >
+          <ShieldCheck size={22} className="nav-icon" />
+          <span className="nav-label">Admin</span>
+        </button>
+      )}
+
+      {/* 5. Perfil */}
       {allowed.includes('profile') && (
         <button
           type="button"

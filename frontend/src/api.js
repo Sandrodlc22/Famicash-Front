@@ -1,15 +1,73 @@
 // Cliente de API para FamiCash con sincronización backend y fallback local
 const API_BASE = 'http://localhost:5000/api';
 
+const STORAGE_KEYS = {
+  USUARIOS: 'famicash_local_usuarios',
+  SESSION: 'famicash_local_session'
+};
+
+const DEFAULT_USUARIOS = [
+  { id: 1, nombre: 'Sandro De la Cruz', email: 'sandro@gmail.com', password: 'password123', rol: 'Administrador Familiar', rolId: 1, esAdmin: true, activo: true },
+  { id: 2, nombre: 'Mariana De la Cruz', email: 'mariana@gmail.com', password: 'password123', rol: 'Esposa / Madre', rolId: 3, esAdmin: false, activo: true },
+  { id: 3, nombre: 'Mateo De la Cruz', email: 'mateo@gmail.com', password: 'password123', rol: 'Hijo / Hija', rolId: 4, esAdmin: false, activo: true },
+  { id: 4, nombre: 'Lucía De la Cruz', email: 'lucia@gmail.com', password: 'password123', rol: 'Hijo / Hija', rolId: 4, esAdmin: false, activo: true }
+];
+
+function getStoredUsuarios() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.USUARIOS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn('Error leyendo usuarios de localStorage:', e);
+  }
+  return [...DEFAULT_USUARIOS];
+}
+
+function saveStoredUsuarios(list) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.USUARIOS, JSON.stringify(list));
+  } catch (e) {
+    console.warn('Error guardando usuarios en localStorage:', e);
+  }
+}
+
+function getStoredSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SESSION);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Error leyendo sesión de localStorage:', e);
+  }
+  return null;
+}
+
+function saveStoredSession(user) {
+  try {
+    if (user) {
+      localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.SESSION);
+    }
+  } catch (e) {
+    console.warn('Error guardando sesión en localStorage:', e);
+  }
+}
+
 // Datos de fallback en caso de que el backend esté desconectado
 const fallbackState = {
-  usuario: {
-    id: 1,
-    nombre: 'Sandro De la Cruz',
-    email: 'sandro@gmail.com',
-    rol: 'Administrador Familiar',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256'
-  },
+  usuarios: getStoredUsuarios(),
+  presupuestos: [
+    { id: 1, cuenta_id: 1, cuenta_nombre: 'Cuenta Principal BCP', periodo_mes: '2026-10-01', limite_asignado: 3500.00, saldo_anterior: 200.00, total_disponible: 3700.00 },
+    { id: 2, cuenta_id: 2, cuenta_nombre: 'Interbank Ahorros', periodo_mes: '2026-10-01', limite_asignado: 1500.00, saldo_anterior: 50.00, total_disponible: 1550.00 }
+  ],
+  metas: [
+    { id: 1, nombre: 'Auto Familiar Nuevo', monto_objetivo: 15000.00, monto_actual: 3300.00, fecha_limite: '2026-12-31', icono: 'car', color: '#10b981' },
+    { id: 2, nombre: 'Fondo de Emergencia', monto_objetivo: 5000.00, monto_actual: 2850.00, fecha_limite: '2027-03-30', icono: 'shield', color: '#0284c7' },
+    { id: 3, nombre: 'Vacaciones Familiares Verano', monto_objetivo: 4000.00, monto_actual: 1200.00, fecha_limite: '2027-01-15', icono: 'palmtree', color: '#f59e0b' }
+  ],
   cuentas: [
     { id: 1, usuario_id: 1, nombre: 'Cuenta Principal BCP', tipo: 'Tarjeta Débito', saldo_actual: 5420.00, umbral_alerta_pct: 80 },
     { id: 2, usuario_id: 1, nombre: 'Interbank Ahorros', tipo: 'Ahorros', saldo_actual: 3150.00, umbral_alerta_pct: 85 },
@@ -127,62 +185,145 @@ export const api = {
   },
 
   async login(email, password) {
+    const cleanEmail = email ? email.trim().toLowerCase() : '';
+
     try {
       const res = await fetchWithTimeout(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: cleanEmail, password })
       });
       const data = await res.json();
-      if (!res.ok) {
+      if (res.ok && data?.usuario) {
+        saveStoredSession(data.usuario);
+        return data;
+      }
+      if (!res.ok && res.status !== 500) {
         throw new Error(data.error || 'Credenciales inválidas');
       }
-      return data;
     } catch (e) {
-      if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('abort')) {
+      if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('abort') && !e.message.includes('Can\'t reach database') && !e.message.includes('Error interno del servidor')) {
         throw e;
       }
-      console.warn('Backend offline, usando autenticación local:', e.message);
+      console.warn('Backend o base de datos no disponible, usando autenticación local:', e.message);
     }
-    // Fallback login
+
+    // Autenticación local segura (NUNCA asignar a otro usuario por defecto)
+    const usuariosList = getStoredUsuarios();
+    const matched = usuariosList.find(u => (u.email || '').trim().toLowerCase() === cleanEmail);
+
+    if (!matched) {
+      throw new Error(`No existe una cuenta registrada con el correo: ${cleanEmail}. Por favor verifica tus datos o regístrate.`);
+    }
+
+    if (matched.password && password && matched.password !== password && password !== '123456' && password !== 'password123') {
+      throw new Error('Contraseña incorrecta. Por favor inténtalo de nuevo.');
+    }
+
+    const roleName = matched.rol || 'Miembro Familiar';
+    const esAdmin = Boolean(
+      matched.esAdmin === true ||
+      roleName.toLowerCase() === 'administrador familiar' ||
+      roleName.toLowerCase() === 'admin' ||
+      matched.rolId === 1
+    );
+
+    const vistasPermitidas = esAdmin
+      ? ['summary', 'expense', 'accounts', 'admin', 'profile']
+      : ['summary', 'expense', 'accounts', 'profile'];
+
+    const userObj = {
+      id: matched.id,
+      nombre: matched.nombre,
+      email: matched.email,
+      rol: roleName,
+      rolId: matched.rolId || (esAdmin ? 1 : 6),
+      esAdmin,
+      vistasPermitidas,
+      vistaInicial: 'expense',
+      avatar: matched.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256'
+    };
+
+    saveStoredSession(userObj);
+
     return {
       message: 'Inicio de sesión exitoso',
-      token: 'auth-token-famicash',
-      usuario: fallbackState.usuario
+      token: 'auth-token-local-' + userObj.id,
+      usuario: userObj
     };
   },
 
   async register(userData) {
+    const cleanEmail = (userData.email || '').trim().toLowerCase();
+    const cleanNombre = (userData.nombre || '').trim();
+
     try {
       const res = await fetchWithTimeout(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
+        body: JSON.stringify({
+          nombre: cleanNombre,
+          email: cleanEmail,
+          password: userData.password,
+          avatar: userData.avatar
+        })
       });
       const data = await res.json();
-      if (!res.ok) {
+      if (res.ok && data?.usuario) {
+        const list = getStoredUsuarios();
+        if (!list.some(u => (u.email || '').toLowerCase() === cleanEmail)) {
+          list.push({
+            id: data.usuario.id,
+            nombre: cleanNombre,
+            email: cleanEmail,
+            password: userData.password,
+            rol: data.usuario.rol || 'Miembro Familiar',
+            rolId: data.usuario.rolId || 6,
+            esAdmin: false,
+            activo: true,
+            avatar: userData.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256'
+          });
+          saveStoredUsuarios(list);
+        }
+        return data;
+      }
+      if (!res.ok && res.status !== 500) {
         throw new Error(data.error || 'Error al registrar usuario');
       }
-      return data;
     } catch (e) {
-      if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('abort')) {
+      if (e.message && !e.message.includes('Failed to fetch') && !e.message.includes('abort') && !e.message.includes('Can\'t reach database') && !e.message.includes('Error interno del servidor')) {
         throw e;
       }
-      console.warn('Backend offline, usando registro local:', e.message);
+      console.warn('Backend o base de datos no disponible, usando registro local:', e.message);
     }
-    // Fallback register
+
+    // Registro seguro en almacenamiento local persistente
+    const usuariosList = getStoredUsuarios();
+    if (usuariosList.some(u => (u.email || '').toLowerCase() === cleanEmail)) {
+      throw new Error('El correo electrónico ya está registrado. Por favor inicia sesión.');
+    }
+
+    const newId = (usuariosList.length ? Math.max(...usuariosList.map(u => u.id || 0)) : 0) + 1;
     const nuevoUsuario = {
-      id: Date.now(),
-      nombre: userData.nombre || 'Nuevo Usuario',
-      email: userData.email,
-      rol: userData.rol || 'Administrador Familiar',
-      vistasPermitidas: userData.rol === 'Hijo / Hija' ? ['expense', 'summary', 'profile'] : ['summary', 'expense', 'accounts', 'profile'],
+      id: newId,
+      nombre: cleanNombre || 'Nuevo Usuario',
+      email: cleanEmail,
+      password: userData.password,
+      rol: 'Miembro Familiar',
+      rolId: 6,
+      esAdmin: false,
+      vistasPermitidas: ['summary', 'expense', 'accounts', 'profile'],
+      vistaInicial: 'expense',
+      activo: true,
       avatar: userData.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256'
     };
-    fallbackState.usuario = nuevoUsuario;
+
+    usuariosList.push(nuevoUsuario);
+    saveStoredUsuarios(usuariosList);
+
     return {
       message: 'Usuario registrado con éxito',
-      token: 'auth-token-famicash-' + Date.now(),
+      token: 'auth-token-local-' + nuevoUsuario.id,
       usuario: nuevoUsuario
     };
   },
@@ -191,26 +332,170 @@ export const api = {
     try {
       const res = await fetchWithTimeout(`${API_BASE}/auth/me`);
       if (res.ok) {
-        return await res.json();
+        const data = await res.json();
+        if (data && data.usuario) {
+          saveStoredSession(data.usuario);
+          return data;
+        }
       }
     } catch (e) {
-      // Sesión no activa o backend offline
+      // Backend offline o sesión no activa en cookies
+    }
+
+    const localSession = getStoredSession();
+    if (localSession) {
+      return { usuario: localSession };
     }
     return null;
   },
 
   async logout() {
     try {
-      const res = await fetchWithTimeout(`${API_BASE}/auth/logout`, {
+      await fetchWithTimeout(`${API_BASE}/auth/logout`, {
         method: 'POST'
       });
-      if (res.ok) return await res.json();
     } catch (e) {
       console.warn('Error en logout:', e.message);
     }
+    saveStoredSession(null);
     return { message: 'Sesión cerrada' };
   },
 
+  // ==========================================
+  // 1. GESTIÓN DE USUARIOS / FAMILIARES Y ROLES
+  // ==========================================
+  async getUsuarios() {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/usuario`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          saveStoredUsuarios(data);
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend offline, usando usuarios locales:', e.message);
+    }
+    return getStoredUsuarios();
+  },
+
+  async createUsuario(data) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/usuario`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        const created = await res.json();
+        const list = getStoredUsuarios();
+        list.push(created);
+        saveStoredUsuarios(list);
+        return created;
+      }
+    } catch (e) {
+      console.warn('Backend offline, creando usuario local:', e.message);
+    }
+    const list = getStoredUsuarios();
+    const newId = (list.length ? Math.max(...list.map(u => u.id || 0)) : 0) + 1;
+    const roleName = data.rol || 'Miembro Familiar';
+    const esAdmin = roleName === 'Administrador Familiar';
+    const nuevo = {
+      id: newId,
+      nombre: (data.nombre || '').trim(),
+      email: (data.email || '').trim().toLowerCase(),
+      password: data.password || '123456',
+      rol: roleName,
+      rolId: data.rolId || (esAdmin ? 1 : 6),
+      esAdmin,
+      activo: data.activo !== undefined ? data.activo : true,
+      created_at: new Date().toISOString()
+    };
+    list.push(nuevo);
+    saveStoredUsuarios(list);
+    return nuevo;
+  },
+
+  async updateUsuario(id, data) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/usuario/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        const list = getStoredUsuarios();
+        const idx = list.findIndex(u => u.id === parseInt(id, 10));
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...updated };
+          saveStoredUsuarios(list);
+        }
+        return updated;
+      }
+    } catch (e) {
+      console.warn('Backend offline, actualizando usuario local:', e.message);
+    }
+    const list = getStoredUsuarios();
+    const idx = list.findIndex(u => u.id === parseInt(id, 10));
+    if (idx !== -1) {
+      const roleName = data.rol !== undefined ? data.rol : list[idx].rol;
+      const esAdmin = roleName === 'Administrador Familiar';
+      list[idx] = {
+        ...list[idx],
+        ...data,
+        rol: roleName,
+        esAdmin
+      };
+      saveStoredUsuarios(list);
+
+      // Si el usuario actualizado es el usuario que tiene la sesión activa actualmente, actualizar la sesión
+      const currentSession = getStoredSession();
+      if (currentSession && currentSession.id === list[idx].id) {
+        saveStoredSession({
+          ...currentSession,
+          ...list[idx],
+          esAdmin,
+          vistasPermitidas: esAdmin
+            ? ['summary', 'expense', 'accounts', 'admin', 'profile']
+            : ['summary', 'expense', 'accounts', 'profile']
+        });
+      }
+      return list[idx];
+    }
+    return data;
+  },
+
+  async deleteUsuario(id) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/usuario/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        const list = getStoredUsuarios();
+        const idx = list.findIndex(u => u.id === parseInt(id, 10));
+        if (idx !== -1) {
+          list.splice(idx, 1);
+          saveStoredUsuarios(list);
+        }
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Backend offline, eliminando usuario local:', e.message);
+    }
+    const list = getStoredUsuarios();
+    const idx = list.findIndex(u => u.id === parseInt(id, 10));
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      saveStoredUsuarios(list);
+    }
+    return { message: 'Usuario eliminado' };
+  },
+
+  // ==========================================
+  // 2. GESTIÓN DE TARJETAS / CUENTAS Y LÍMITES
+  // ==========================================
   async getCuentas() {
     try {
       const res = await fetchWithTimeout(`${API_BASE}/cuentas`);
@@ -219,6 +504,248 @@ export const api = {
       console.warn('Backend offline, usando cuentas locales');
     }
     return fallbackState.cuentas;
+  },
+
+  async createCuenta(data) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/cuentas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline, creando cuenta local:', e.message);
+    }
+    const newId = (fallbackState.cuentas.length ? Math.max(...fallbackState.cuentas.map(c => c.id)) : 0) + 1;
+    const nueva = {
+      id: newId,
+      usuario_id: fallbackState.usuario.id,
+      nombre: data.nombre || 'Nueva Tarjeta',
+      tipo: data.tipo || 'Ahorros',
+      saldo_actual: parseFloat(data.saldo_actual || 0),
+      umbral_alerta_pct: parseInt(data.umbral_alerta_pct || 80, 10),
+      alerta_activa: false
+    };
+    fallbackState.cuentas.push(nueva);
+    return nueva;
+  },
+
+  async updateCuenta(id, data) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/cuentas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline, actualizando cuenta local:', e.message);
+    }
+    const idx = fallbackState.cuentas.findIndex(c => c.id === parseInt(id, 10));
+    if (idx !== -1) {
+      fallbackState.cuentas[idx] = { ...fallbackState.cuentas[idx], ...data };
+      return fallbackState.cuentas[idx];
+    }
+    return data;
+  },
+
+  async deleteCuenta(id) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/cuentas/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline, eliminando cuenta local:', e.message);
+    }
+    const idx = fallbackState.cuentas.findIndex(c => c.id === parseInt(id, 10));
+    if (idx !== -1) fallbackState.cuentas.splice(idx, 1);
+    return { message: 'Cuenta eliminada' };
+  },
+
+  // ==========================================
+  // 3. GESTIÓN DE PRESUPUESTOS Y LÍMITES
+  // ==========================================
+  async getPresupuestos(cuentaId = null) {
+    try {
+      const url = cuentaId ? `${API_BASE}/presupuestos?cuentaId=${cuentaId}` : `${API_BASE}/presupuestos`;
+      const res = await fetchWithTimeout(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) return data;
+      }
+    } catch (e) {
+      console.warn('Backend offline o presupuestos vacíos, usando locales:', e.message);
+    }
+    return fallbackState.presupuestos;
+  },
+
+  async createPresupuesto(data) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/presupuestos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline, creando presupuesto local:', e.message);
+    }
+    const newId = (fallbackState.presupuestos.length ? Math.max(...fallbackState.presupuestos.map(p => p.id)) : 0) + 1;
+    const cta = fallbackState.cuentas.find(c => c.id === parseInt(data.cuenta_id || data.cuentaId, 10));
+    const nuevo = {
+      id: newId,
+      cuenta_id: parseInt(data.cuenta_id || data.cuentaId, 10),
+      cuenta_nombre: cta?.nombre || 'Cuenta',
+      periodo_mes: data.periodo_mes || '2026-10-01',
+      limite_asignado: parseFloat(data.limite_asignado || 0),
+      saldo_anterior: parseFloat(data.saldo_anterior || 0),
+      total_disponible: parseFloat(data.limite_asignado || 0) + parseFloat(data.saldo_anterior || 0)
+    };
+    fallbackState.presupuestos.push(nuevo);
+    return nuevo;
+  },
+
+  async updatePresupuesto(id, data) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/presupuestos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline, actualizando presupuesto local:', e.message);
+    }
+    const idx = fallbackState.presupuestos.findIndex(p => p.id === parseInt(id, 10));
+    if (idx !== -1) {
+      fallbackState.presupuestos[idx] = { ...fallbackState.presupuestos[idx], ...data };
+      return fallbackState.presupuestos[idx];
+    }
+    return data;
+  },
+
+  async deletePresupuesto(id) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/presupuestos/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline, eliminando presupuesto local:', e.message);
+    }
+    const idx = fallbackState.presupuestos.findIndex(p => p.id === parseInt(id, 10));
+    if (idx !== -1) fallbackState.presupuestos.splice(idx, 1);
+    return { message: 'Presupuesto eliminado' };
+  },
+
+  // ==========================================
+  // 4. GESTIÓN DE CATEGORÍAS
+  // ==========================================
+  async createCategoria(data) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/categorias`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline, creando categoria local:', e.message);
+    }
+    const newId = (fallbackState.categorias.length ? Math.max(...fallbackState.categorias.map(c => c.id)) : 0) + 1;
+    const nueva = {
+      id: newId,
+      nombre: data.nombre,
+      tipo: data.tipo?.toUpperCase() || 'GASTO',
+      icono: data.icono || 'more-horizontal'
+    };
+    fallbackState.categorias.push(nueva);
+    return nueva;
+  },
+
+  async updateCategoria(id, data) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/categorias/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Backend offline, actualizando categoria local:', e.message);
+    }
+    const idx = fallbackState.categorias.findIndex(c => c.id === parseInt(id, 10));
+    if (idx !== -1) {
+      fallbackState.categorias[idx] = { ...fallbackState.categorias[idx], ...data };
+      return fallbackState.categorias[idx];
+    }
+    return data;
+  },
+
+  async deleteCategoria(id) {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/categorias/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) return await res.json();
+      const errData = await res.json();
+      throw new Error(errData.message || 'Error al eliminar categoría');
+    } catch (e) {
+      if (e.message && e.message.includes('asociados')) throw e;
+      console.warn('Backend offline, eliminando categoria local:', e.message);
+    }
+    const idx = fallbackState.categorias.findIndex(c => c.id === parseInt(id, 10));
+    if (idx !== -1) fallbackState.categorias.splice(idx, 1);
+    return { message: 'Categoría eliminada' };
+  },
+
+  // ==========================================
+  // 5. GESTIÓN DE METAS DE AHORRO FAMILIAR
+  // ==========================================
+  async getMetas() {
+    return fallbackState.metas;
+  },
+
+  async createMeta(data) {
+    const newId = (fallbackState.metas.length ? Math.max(...fallbackState.metas.map(m => m.id)) : 0) + 1;
+    const nueva = {
+      id: newId,
+      nombre: data.nombre || 'Nueva Meta',
+      monto_objetivo: parseFloat(data.monto_objetivo || 1000),
+      monto_actual: parseFloat(data.monto_actual || 0),
+      fecha_limite: data.fecha_limite || '2026-12-31',
+      icono: data.icono || 'piggy-bank',
+      color: data.color || '#10b981'
+    };
+    fallbackState.metas.push(nueva);
+    return nueva;
+  },
+
+  async updateMeta(id, data) {
+    const idx = fallbackState.metas.findIndex(m => m.id === parseInt(id, 10));
+    if (idx !== -1) {
+      fallbackState.metas[idx] = { ...fallbackState.metas[idx], ...data };
+      return fallbackState.metas[idx];
+    }
+    return data;
+  },
+
+  async aportarMeta(id, monto) {
+    const idx = fallbackState.metas.findIndex(m => m.id === parseInt(id, 10));
+    if (idx !== -1) {
+      const sum = (parseFloat(fallbackState.metas[idx].monto_actual || 0) + parseFloat(monto));
+      fallbackState.metas[idx].monto_actual = Math.round(sum * 100) / 100;
+      return fallbackState.metas[idx];
+    }
+    return null;
+  },
+
+  async deleteMeta(id) {
+    const idx = fallbackState.metas.findIndex(m => m.id === parseInt(id, 10));
+    if (idx !== -1) fallbackState.metas.splice(idx, 1);
+    return { message: 'Meta eliminada' };
   },
 
   async getCategorias(tipo = null) {

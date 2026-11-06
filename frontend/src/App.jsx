@@ -7,12 +7,13 @@ import VistaIngresoMonto from './components/VistaIngresoMonto';
 import VistaResumen from './components/VistaResumen';
 import VistaPerfil from './components/VistaPerfil';
 import VistaCuentas from './components/VistaCuentas';
+import VistaAdmin from './components/VistaAdmin';
 import NavegacionInferior from './components/NavegacionInferior';
 import './App.css';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // Vistas: 'login' | 'register' | 'expense' | 'summary' | 'profile' | 'accounts'
+  // Vistas: 'login' | 'register' | 'expense' | 'summary' | 'profile' | 'accounts' | 'admin'
   const [currentView, setCurrentView] = useState('login');
   const [usuario, setUsuario] = useState(null);
   const [cuentas, setCuentas] = useState([]);
@@ -47,6 +48,16 @@ export default function App() {
     }
   };
 
+  // Verificación estricta de Rol Administrador Familiar
+  const isAdmin = Boolean(
+    usuario && (
+      usuario.esAdmin === true ||
+      (usuario.rol && usuario.rol.trim().toLowerCase() === 'administrador familiar') ||
+      (usuario.rol && usuario.rol.trim().toLowerCase() === 'admin') ||
+      usuario.rolId === 1
+    )
+  );
+
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -55,7 +66,10 @@ export default function App() {
           setUsuario(session.usuario);
           setIsAuthenticated(true);
           const initial = session.usuario.vistaInicial || 'expense';
-          setCurrentView(initial);
+          const userIsAdmin = session.usuario.esAdmin === true ||
+            (session.usuario.rol && session.usuario.rol.trim().toLowerCase() === 'administrador familiar') ||
+            session.usuario.rolId === 1;
+          setCurrentView(initial === 'admin' && !userIsAdmin ? 'expense' : initial);
         }
       } catch (err) {
         // No hay sesión activa previa
@@ -65,13 +79,26 @@ export default function App() {
     initApp();
   }, []);
 
+  // Proteger la vista de administración contra accesos de roles no autorizados
+  useEffect(() => {
+    if (isAuthenticated && usuario && currentView === 'admin' && !isAdmin) {
+      setCurrentView('expense');
+    }
+  }, [currentView, usuario, isAuthenticated, isAdmin]);
+
   // Manejo de Inicio de Sesión
   const handleLogin = async (email, password) => {
     const res = await api.login(email, password);
     setLoginNotification('');
     setUsuario(res.usuario);
     setIsAuthenticated(true);
-    const initialView = res.usuario?.vistaInicial || (res.usuario?.vistasPermitidas?.includes('expense') ? 'expense' : res.usuario?.vistasPermitidas?.[0] || 'summary');
+    const userIsAdmin = res.usuario?.esAdmin === true ||
+      (res.usuario?.rol && res.usuario.rol.trim().toLowerCase() === 'administrador familiar') ||
+      res.usuario?.rolId === 1;
+    let initialView = res.usuario?.vistaInicial || (res.usuario?.vistasPermitidas?.includes('expense') ? 'expense' : res.usuario?.vistasPermitidas?.[0] || 'summary');
+    if (initialView === 'admin' && !userIsAdmin) {
+      initialView = 'expense';
+    }
     setCurrentView(initialView);
     await loadAppData();
   };
@@ -155,6 +182,7 @@ export default function App() {
                 <VistaPerfil
                   usuario={usuario}
                   onLogout={handleLogout}
+                  onGoToAdmin={() => setCurrentView('admin')}
                 />
               )}
 
@@ -165,6 +193,17 @@ export default function App() {
                   onGoToExpense={() => setCurrentView('expense')}
                 />
               )}
+
+              {currentView === 'admin' && isAdmin && (
+                <VistaAdmin
+                  usuario={usuario}
+                  cuentas={cuentas}
+                  categorias={categorias}
+                  api={api}
+                  onRefreshAll={loadAppData}
+                  onGoToExpense={() => setCurrentView('expense')}
+                />
+              )}
             </div>
 
             {/* Barra de Navegación Inferior (Visible en todas las vistas autenticadas) */}
@@ -172,6 +211,7 @@ export default function App() {
               currentView={currentView}
               setView={setCurrentView}
               vistasPermitidas={usuario?.vistasPermitidas}
+              usuario={usuario}
             />
           </div>
         )}

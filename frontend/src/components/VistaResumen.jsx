@@ -13,10 +13,16 @@ import {
   PiggyBank,
   RefreshCw,
   Wallet,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Bell
 } from 'lucide-react';
 import { getCategoryIcon } from '../utils/iconosCategorias';
 import logoFamicash from '../assets/logo-famicash.png';
+import {
+  confirmarAccion,
+  mostrarToastExito,
+  mostrarCentroNotificaciones
+} from '../utils/notificaciones';
 
 export default function VistaResumen({
   resumen,
@@ -71,7 +77,10 @@ export default function VistaResumen({
   const handleRefreshClick = async () => {
     setIsRefreshing(true);
     await onRefresh();
-    setTimeout(() => setIsRefreshing(false), 500);
+    setTimeout(() => {
+      setIsRefreshing(false);
+      mostrarToastExito('Datos actualizados');
+    }, 400);
   };
 
   const saldoTotal = resumen?.saldoTotal ?? cuentas.reduce((acc, c) => acc + parseFloat(c.saldo_actual || 0), 0);
@@ -94,6 +103,14 @@ export default function VistaResumen({
         </div>
 
         <div className="summary-header-actions">
+          <button
+            type="button"
+            className="summary-action-btn"
+            onClick={() => mostrarCentroNotificaciones()}
+            title="Ver Notificaciones"
+          >
+            <Bell size={17} />
+          </button>
           <button
             type="button"
             className={`summary-action-btn ${isRefreshing ? 'spin-anim' : ''}`}
@@ -353,11 +370,19 @@ export default function VistaResumen({
                             <button
                               type="button"
                               className="tx-delete-btn"
-                              onClick={() => {
-                                if (window.confirm(isTransfer
-                                  ? `¿Eliminar esta transferencia de S/ ${parseFloat(mov.monto).toFixed(2)} y restaurar los saldos en ambas cuentas?`
-                                  : `¿Eliminar este movimiento de S/ ${parseFloat(mov.monto).toFixed(2)} y restaurar el saldo?`)) {
-                                  onDeleteMovimiento(mov.id);
+                              onClick={async () => {
+                                const confirmado = await confirmarAccion({
+                                  titulo: isTransfer ? '¿Eliminar transferencia?' : '¿Eliminar movimiento?',
+                                  texto: isTransfer
+                                    ? `Se restaurarán los saldos en ambas cuentas (S/ ${parseFloat(mov.monto).toFixed(2)}).`
+                                    : `Se restaurará el saldo de la cuenta (S/ ${parseFloat(mov.monto).toFixed(2)}).`,
+                                  confirmText: 'Sí, eliminar',
+                                  cancelText: 'Cancelar',
+                                  icono: 'warning'
+                                });
+                                if (confirmado) {
+                                  await onDeleteMovimiento(mov.id);
+                                  mostrarToastExito('Movimiento eliminado');
                                 }
                               }}
                               title="Eliminar movimiento"
