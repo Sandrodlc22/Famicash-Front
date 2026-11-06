@@ -2,91 +2,50 @@
 
 :root {
   --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
-  /* Paleta Verde Agua & FamiCash */
-  --primary-forest: #006241;
-  --primary-forest-hover: #004d33;
-  --teal-vibrant: #00c48c;
-  --teal-mint: #10b981;
-  --teal-soft: #e6f7f2;
-  --teal-border: #b2dfdb;
-  --pastel-gradient: linear-gradient(180deg, #d8f3e5 0%, #edf7f2 40%, #f7faf8 100%);
-  
-  /* Colores de soporte */
-  --bg-app: #f7faf9;
+  --forest: #006241;
+  --forest-dark: #004d33;
+  --forest-soft: #ecfdf5;
+  --forest-border: #a7f3d0;
+  --bg-page: #f3f6f5;
   --bg-card: #ffffff;
-  --text-dark: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #80908c;
-  --border-light: #e6edea;
-  
-  /* Estados de gasto / ingreso */
-  --color-expense: #ef4444;
-  --color-expense-soft: #fee2e2;
-  --color-income: #059669;
-  --color-income-soft: #d1fae5;
-  
-  /* Sombras */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 16px rgba(0, 98, 65, 0.06);
-  --shadow-lg: 0 10px 30px rgba(0, 98, 65, 0.1);
-  --shadow-phone: 0 25px 60px -15px rgba(0, 50, 35, 0.25), 0 0 0 12px #1f2937;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --danger: #e11d48;
+  --danger-soft: #ffe4e6;
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+  --success: #059669;
+  --success-soft: #d1fae5;
+  --info: #0284c7;
+  --info-soft: #e0f2fe;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   font-family: var(--font-family);
-  background: #0f1c18 radial-gradient(circle at 50% 10%, #16362e 0%, #0c1815 100%);
-  color: var(--text-dark);
+  background-color: var(--bg-page);
+  color: var(--text-main);
   min-height: 100vh;
-  margin: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
 #root {
   width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
 }
 
-button {
+button, input, select {
   font-family: inherit;
+}
+
+button {
+  cursor: pointer;
   border: none;
   background: none;
-  cursor: pointer;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-input, select {
-  font-family: inherit;
-  outline: none;
-}
-
-/* Ocultar icono nativo de mostrar contraseña de Edge / Windows */
-input::-ms-reveal,
-input::-ms-clear {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  pointer-events: none !important;
-}
-
-input::-webkit-credentials-auto-fill-button {
-  visibility: hidden !important;
-  pointer-events: none !important;
-  position: absolute !important;
-  right: 0 !important;
 }

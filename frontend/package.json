@@ -13,7 +13,7 @@
     "lucide-react": "^1.55.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "sweetalert2": "^11.26.25"
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
