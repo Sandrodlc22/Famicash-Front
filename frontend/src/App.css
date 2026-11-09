@@ -2556,7 +2556,19 @@ input::-ms-clear {
   .donut-layout-wrap,
   .auth-split-card,
   .budget-form-inline {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .reports-view-container,
+  .dashboard-container,
+  .budgets-view-container,
+  .goals-view-container,
+  .admin-tax-container,
+  .register-view-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .auth-page-shell {
@@ -2904,32 +2916,220 @@ input::-ms-clear {
 
   /* Dona y Paneles */
   .panel-card {
-    padding: 14px 12px;
+    padding: 12px 10px;
     border-radius: 14px;
     gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .donut-layout-wrap {
     grid-template-columns: 1fr;
     gap: 12px;
+    width: 100%;
   }
 
   .donut-chart-box {
     height: 190px;
+    width: 100%;
+    min-width: 0;
   }
 
   .donut-legend-row {
     padding: 6px 8px;
   }
 
-  /* Lista de transacciones en celular */
-  .tx-row-item {
-    padding: 9px 10px;
+  /* Gráficos de barras en móvil (no desborda el ancho del celular) */
+  .bar-chart-wrapper {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .recharts-responsive-container {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Controles de evolutivo y series */
+  .evo-controls-row {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
   }
 
-  .tx-amount-col strong {
-    font-size: 13.5px;
+  .segmented-pills {
+    width: 100%;
+    display: flex;
+    box-sizing: border-box;
+    overflow-x: auto;
+  }
+
+  .segmented-pills button {
+    flex: 1;
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .evo-series-toggles {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .serie-toggle-pill {
+    flex: 1 1 auto;
+    font-size: 11px;
+    padding: 6px 8px;
+    justify-content: center;
+  }
+
+  /* Ranking y Desglose por niveles (Imagen 1) */
+  .breakdown-row-btn {
+    padding: 10px 8px;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .br-left {
+    min-width: 0;
+    flex: 1;
+    gap: 8px;
+  }
+
+  .br-name {
+    font-size: 12.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .br-meta {
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+
+  .br-right {
+    width: auto !important;
+    min-width: 85px !important;
+    max-width: 110px !important;
+    flex-shrink: 0;
+    gap: 3px;
+  }
+
+  .br-amount-line {
+    gap: 4px;
+    justify-content: flex-end;
+  }
+
+  .br-amount-line strong {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .br-amount-line span {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .br-chevron {
+    flex-shrink: 0;
+    margin-left: 1px;
+  }
+
+  /* Lista e Historial de transacciones en celular (Imagen 2) */
+  .scrollable-tx-list {
+    max-height: 520px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .tx-row-item {
+    padding: 8px 8px;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .tx-badge-cat {
+    padding: 4px 6px;
+    font-size: 10.5px;
+    min-width: 44px;
+    text-align: center;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+
+  .tx-main-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .tx-title-line {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .tx-title-line strong {
+    font-size: 12px;
+    word-break: break-word;
+    display: inline;
+  }
+
+  .tx-sub-line {
+    font-size: 10.5px;
+    gap: 3px;
+    word-break: break-word;
+  }
+
+  .tx-obs-line {
+    font-size: 10px;
+    word-break: break-word;
+  }
+
+  .tx-right-col {
+    flex-shrink: 0;
+    min-width: 70px;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .tx-amount-val {
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+
+  .tx-row-actions {
+    display: flex;
+    gap: 3px;
+  }
+
+  .tx-icon-btn {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  /* Metas y Objetivos en móvil */
+  .goals-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
   }
 
   /* Pestañas de modo de registro (Gasto, Ingreso, Ahorro) */
