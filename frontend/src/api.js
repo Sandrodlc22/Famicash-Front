@@ -21,13 +21,44 @@ function buildQuery(params = {}) {
   return q ? `?${q}` : '';
 }
 
+// Tokens también guardados en el navegador: respaldo cuando las cookies de terceros
+// están bloqueadas (front y back en dominios distintos, p.ej. *.up.railway.app).
+const TOKEN_KEY = 'famicash_access_token';
+const REFRESH_KEY = 'famicash_refresh_token';
+
+function saveTokens(data) {
+  if (data?.accessToken) localStorage.setItem(TOKEN_KEY, data.accessToken);
+  if (data?.refreshToken) localStorage.setItem(REFRESH_KEY, data.refreshToken);
+  return data;
+}
+
+function clearTokens() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+}
+
+function authHeaders() {
+  const t = localStorage.getItem(TOKEN_KEY);
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
 async function tryRefreshSession() {
   if (!refreshPromise) {
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
     refreshPromise = fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(refreshToken ? { refreshToken } : {})
     })
-      .then((r) => r.ok)
+      .then(async (r) => {
+        if (!r.ok) {
+          clearTokens();
+          return false;
+        }
+        saveTokens(await r.json().catch(() => null));
+        return true;
+      })
       .catch(() => false)
       .finally(() => {
         refreshPromise = null;
@@ -37,14 +68,16 @@ async function tryRefreshSession() {
 }
 
 async function request(path, options = {}, isRetry = false) {
+  const { headers: extraHeaders, rawBody, ...fetchOptions } = options;
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
     cache: 'no-store',
+    ...fetchOptions,
     headers: {
-      ...(options.rawBody ? {} : { 'Content-Type': 'application/json' }),
-      ...(options.headers || {})
-    },
-    ...options
+      ...(rawBody ? {} : { 'Content-Type': 'application/json' }),
+      ...authHeaders(),
+      ...(extraHeaders || {})
+    }
   });
 
   if (
@@ -79,10 +112,14 @@ export const api = {
 
   // Autenticación
   login: (email, password) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }).then(saveTokens),
   register: (payload) =>
-    request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
-  logout: () => request('/auth/logout', { method: 'POST' }),
+    request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }).then(saveTokens),
+  logout: () =>
+    request('/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken: localStorage.getItem(REFRESH_KEY) })
+    }).finally(clearTokens),
   getMe: () => request('/auth/me'),
   updateMe: (payload) =>
     request('/auth/me', { method: 'PATCH', body: JSON.stringify(payload) }),
@@ -172,7 +209,8 @@ export const api = {
   // Exportar, Plantilla e Importar Excel (.xlsx)
   descargarPlantillaExcel: async () => {
     const res = await fetch(`${API_BASE}/excel/plantilla`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: authHeaders()
     });
     if (!res.ok) throw new Error('No se pudo descargar la plantilla de Excel');
     const blob = await res.blob();
@@ -188,7 +226,8 @@ export const api = {
 
   exportarExcel: async (filtros = {}) => {
     const res = await fetch(`${API_BASE}/excel/exportar${buildQuery(filtros)}`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: authHeaders()
     });
     if (!res.ok) throw new Error('No se pudo exportar el archivo Excel');
     const blob = await res.blob();
