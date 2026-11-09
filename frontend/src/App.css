@@ -2141,6 +2141,8 @@
   border: 1px solid var(--border);
   text-align: left;
   transition: all 0.15s;
+  min-width: 0;
+  width: 100%;
 }
 
 .quick-user-btn:hover {
@@ -2164,15 +2166,34 @@
 .quick-avatar.anthony { background: #d97706; }
 .quick-avatar.vanessa { background: #7c3aed; }
 
+.quick-user-btn > div {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
 .quick-user-btn strong {
   display: block;
   font-size: 12px;
   color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .quick-user-btn small {
   font-size: 10.5px;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+/* Evita que el navegador pinte un ojo nativo duplicado en inputs de contraseña */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
 }
 
 .auth-form {
@@ -2538,8 +2559,44 @@
     grid-template-columns: 1fr;
   }
 
+  .auth-page-shell {
+    padding: 20px 16px;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .auth-split-card {
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+    border-radius: 20px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
   .auth-hero-panel {
     display: none;
+  }
+
+  .auth-form-panel {
+    padding: 28px 24px;
+    width: 100%;
+    box-sizing: border-box;
+    gap: 16px;
+  }
+
+  .quick-access-box {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
   }
 
   .main-categories-grid {
@@ -2553,9 +2610,12 @@
     bottom: 0;
     left: 0;
     right: 0;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
     background: #ffffff;
     border-top: 1px solid var(--border);
-    padding: 6px 4px;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) 4px;
     z-index: 50;
     box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.05);
   }
@@ -2564,12 +2624,21 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 2px;
     padding: 5px 2px;
     font-size: 10.5px;
     font-weight: 700;
     color: #64748b;
     border-radius: 8px;
+    min-width: 0;
+  }
+
+  .mob-nav-btn span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
 
   .mob-nav-btn.active {
@@ -2578,6 +2647,745 @@
 
   .mob-nav-btn.fab {
     color: var(--forest);
+  }
+}
+
+/* ============================================================
+   RESPONSIVE COMPLETO PARA SMARTPHONES Y CELULARES (<= 640px)
+   Garantiza 0 desbordamientos horizontales y uso táctil fluido
+   manteniendo exactamente todas las funciones, botones y diseño.
+   ============================================================ */
+@media (max-width: 640px) {
+  /* Contenedores principales sin desborde horizontal */
+  html, body, #root {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  .famicash-app-shell,
+  .famicash-main-area {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .famicash-page-content {
+    padding: 10px 10px calc(80px + env(safe-area-inset-bottom, 10px)) 10px;
+  }
+
+  /* Login y Registro en celulares: se adapta 100% al ancho de pantalla */
+  .auth-page-shell {
+    padding: 12px 10px;
+  }
+
+  .auth-split-card {
+    border-radius: 18px;
+    max-width: 100%;
+    width: 100%;
+    box-shadow: 0 10px 30px rgba(0, 98, 65, 0.1);
+  }
+
+  .auth-form-panel {
+    padding: 22px 14px;
+    gap: 14px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .auth-brand-header h2 {
+    font-size: 19px;
+    word-break: break-word;
+  }
+
+  .auth-brand-header p {
+    font-size: 12px;
+    word-break: break-word;
+  }
+
+  .quick-access-box {
+    padding: 10px 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Los botones de acceso rápido de Anthony y Vanessa se adaptan a 1 columna para pulsar fácil */
+  .quick-access-buttons {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .quick-user-btn {
+    padding: 9px 10px;
+  }
+
+  .quick-user-btn strong {
+    font-size: 12px;
+  }
+
+  .quick-user-btn small {
+    font-size: 10.5px;
+  }
+
+  .input-with-icon {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .input-with-icon input {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Header móvil compacto */
+  .mobile-top-navbar {
+    padding: 8px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 45;
+  }
+
+  .mobile-brand-left {
+    font-size: 16px;
+    gap: 6px;
+  }
+
+  .mobile-logo-sm {
+    height: 26px;
+  }
+
+  .mobile-excel-btn {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .mobile-logout-btn {
+    padding: 5px;
+  }
+
+  /* Barra de Periodo en celulares */
+  .sticky-period-bar {
+    padding: 8px 10px;
+  }
+
+  .period-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .period-type-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+    gap: 2px;
+  }
+
+  .period-type-btn {
+    padding: 6px 2px;
+    font-size: 11.5px;
+    text-align: center;
+  }
+
+  .period-nav-pill {
+    width: 100%;
+    justify-content: space-between;
+    padding: 5px 10px;
+    box-sizing: border-box;
+  }
+
+  .period-current-label {
+    min-width: 0;
+    font-size: 13px;
+    flex: 1;
+    text-align: center;
+  }
+
+  .period-actions-group {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .btn-filter-toggle {
+    width: 100%;
+    justify-content: center;
+    padding: 7px 12px;
+  }
+
+  /* Dashboard: Banner de bienvenida */
+  .welcome-banner-card {
+    padding: 16px 14px;
+    gap: 12px;
+    border-radius: 14px;
+  }
+
+  .welcome-text-block h2 {
+    font-size: 19px;
+  }
+
+  .welcome-text-block p {
+    font-size: 12px;
+  }
+
+  .quick-type-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .quick-action-pill {
+    width: 100%;
+    justify-content: center;
+    padding: 9px 6px;
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  /* 5 Tarjetas KPI en 2 columnas */
+  .kpi-cards-grid-5 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .kpi-stat-card {
+    padding: 12px 10px;
+    border-radius: 12px;
+    gap: 6px;
+  }
+
+  .kpi-icon-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+
+  .kpi-label {
+    font-size: 11.5px;
+  }
+
+  .kpi-amount {
+    font-size: 17px !important;
+    letter-spacing: -0.2px;
+  }
+
+  .kpi-stat-card:nth-child(5) {
+    grid-column: span 2;
+  }
+
+  /* Favoritos rápidos */
+  .favorites-chips-grid,
+  .fav-strip-scroll,
+  .pocket-favs-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .fav-quick-chip,
+  .fav-pill-btn,
+  .pocket-fav-btn {
+    padding: 8px 8px;
+    border-radius: 10px;
+    min-width: 0;
+  }
+
+  .fav-chip-sub,
+  .pocket-fav-text strong {
+    font-size: 11.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Dona y Paneles */
+  .panel-card {
+    padding: 14px 12px;
+    border-radius: 14px;
+    gap: 12px;
+  }
+
+  .donut-layout-wrap {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .donut-chart-box {
+    height: 190px;
+  }
+
+  .donut-legend-row {
+    padding: 6px 8px;
+  }
+
+  /* Lista de transacciones en celular */
+  .tx-row-item {
+    padding: 9px 10px;
+    gap: 8px;
+  }
+
+  .tx-amount-col strong {
+    font-size: 13.5px;
+  }
+
+  /* Pestañas de modo de registro (Gasto, Ingreso, Ahorro) */
+  .pocket-mode-switcher {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .pocket-mode-tab {
+    padding: 8px 4px;
+    font-size: 11px;
+    text-align: center;
+    justify-content: center;
+    border-radius: 10px;
+  }
+
+  .pocket-mode-tab small {
+    display: none;
+  }
+
+  /* Cuadrícula de categorías familiares */
+  .friendly-cats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .friendly-cat-card {
+    padding: 10px 8px;
+    gap: 8px;
+    border-radius: 12px;
+  }
+
+  .friendly-cat-emoji {
+    font-size: 20px;
+  }
+
+  .friendly-cat-info strong {
+    font-size: 12px;
+  }
+
+  .friendly-cat-info small {
+    font-size: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Subcategorías */
+  .friendly-subcats-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  /* Segmentadores estilo Excel en móvil */
+  .slicers-wrapper {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .slicers-grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .slicer-box {
+    max-height: 220px;
+  }
+
+  /* Barra de navegación inferior móvil */
+  .mobile-bottom-nav {
+    padding: 4px 2px calc(4px + env(safe-area-inset-bottom, 6px)) 2px;
+  }
+
+  .mob-nav-btn {
+    padding: 4px 1px;
+    font-size: 9.5px;
+    gap: 1px;
+  }
+
+  .mob-nav-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .mob-nav-btn span {
+    font-size: 9.5px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Modales en móvil */
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .modal-dialog-card {
+    padding: 16px 14px;
+    border-radius: 16px;
+    max-width: 100%;
+  }
+
+  /* ============================================================
+     RESPONSIVE PARA LA VISTA DE EXCEL Y TAXONOMÍA EN CELULARES
+     (Soluciona desbordamientos en descarga Excel y árbol de carpetas)
+     ============================================================ */
+  /* Pestañas de la vista (Carpetas, Excel, Medios) */
+  .level-tabs-bar {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+    padding-bottom: 10px;
+  }
+
+  .level-tab-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 12px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+  }
+
+  .level-tab-btn span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Formulario de descarga de Excel: Campos a 1 columna completa */
+  .field-row-2 {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100%;
+  }
+
+  .field-group {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .field-group input,
+  .field-group select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  /* Evitar desborde del texto y códigos explicativos en tarjetas */
+  .panel-card-header p code,
+  .excel-preview-schema code,
+  .folder-code-meta code,
+  code {
+    word-break: break-all;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    display: inline-block;
+    max-width: 100%;
+  }
+
+  .panel-card-header p {
+    word-break: break-word;
+    font-size: 12px;
+  }
+
+  .excel-preview-schema {
+    padding: 9px 10px;
+    font-size: 11.5px;
+    word-break: break-word;
+  }
+
+  /* Cabecera y botón de descargar plantilla en tarjeta de subida */
+  .panel-card-header.wrap-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .btn-template-excel {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .template-guide-banner {
+    padding: 10px;
+    font-size: 11.5px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .upload-drop-area {
+    padding: 18px 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .upload-drop-area strong {
+    font-size: 13px;
+  }
+
+  .upload-drop-area p {
+    font-size: 11px;
+  }
+
+  .import-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .imp-stat-pill {
+    padding: 8px 10px;
+  }
+
+  .imp-stat-pill strong {
+    font-size: 16px;
+  }
+
+  /* ============================================================
+     ÁRBOL DE CARPETAS / TAXONOMÍA EN CELULARES
+     ============================================================ */
+  .folder-tree-panel {
+    padding: 12px 10px !important;
+  }
+
+  .folder-explorer-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .folder-explorer-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .folder-search-box {
+    width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .btn-add-area-pill {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .folder-levels-legend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .legend-arrow {
+    display: none;
+  }
+
+  /* Escalón 1: Área Familiar (Hogar, Ingresos, Lara...) */
+  .folder-area-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 10px;
+    gap: 8px;
+  }
+
+  .folder-area-left {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .folder-area-title-line {
+    gap: 6px;
+  }
+
+  .folder-area-name {
+    font-size: 14px;
+    word-break: break-word;
+  }
+
+  .folder-area-actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .btn-folder-action-add {
+    padding: 5px 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  /* Escalón 2: Rubros (Subcarpetas) */
+  .folder-level-2-children {
+    margin-left: 6px !important;
+    padding: 8px 6px 10px 8px !important;
+    border-left: 1.5px dashed #cbd5e1 !important;
+    gap: 8px !important;
+    box-sizing: border-box;
+    width: auto;
+  }
+
+  .folder-rubro-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px 8px;
+    gap: 6px;
+  }
+
+  .folder-rubro-left {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .folder-rubro-title-line {
+    gap: 6px;
+  }
+
+  .folder-rubro-title-line strong {
+    font-size: 12.5px;
+  }
+
+  .folder-rubro-actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  /* Escalón 3: Conceptos (Hojas) */
+  .folder-level-3-children {
+    margin-left: 6px !important;
+    padding: 6px 4px 8px 6px !important;
+    border-left: 1.5px dashed #cbd5e1 !important;
+    gap: 6px !important;
+    box-sizing: border-box;
+    width: auto;
+  }
+
+  .folder-quick-add-concepto {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .folder-quick-add-concepto input {
+    min-width: 0;
+    flex: 1;
+    font-size: 11.5px;
+    padding: 6px 8px;
+    box-sizing: border-box;
+  }
+
+  .folder-quick-add-concepto .btn-sm-inline {
+    padding: 5px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .folder-concepto-item {
+    padding: 6px 6px;
+    gap: 6px;
+  }
+
+  .folder-concepto-left {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .concepto-name-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+  }
+
+  .folder-concepto-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+
+  .folder-concepto-actions .tx-icon-btn {
+    padding: 4px;
+  }
+
+  .btn-dashed-add-rubro {
+    padding: 7px 10px;
+    font-size: 11.5px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Pestaña 3: Medios de pago en celulares */
+  .budget-form-inline {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .budget-form-inline .btn-primary-inline {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .medios-admin-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Notificación / Toast flotante centrado en celulares */
+  .floating-global-toast {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: calc(100vw - 24px);
+    margin: 0 auto;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    font-size: 12.5px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(6, 95, 70, 0.35);
+  }
+}
+
+@media (max-width: 380px) {
+  .welcome-text-block h2 {
+    font-size: 17px;
+  }
+
+  .kpi-amount {
+    font-size: 15px !important;
+  }
+
+  .mob-nav-btn span {
+    font-size: 9px;
   }
 }
 
